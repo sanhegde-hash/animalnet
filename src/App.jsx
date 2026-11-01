@@ -480,6 +480,11 @@ export default function App() {
             <p className="text-center text-[11px] text-slate-400 mt-2">
               AnimalNet autonomously crawls the live web and enforces strict zoological domain guardrails.
             </p>
+            <div className="mt-3 text-center text-[11px] text-slate-400 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+  <span>© {new Date().getFullYear()} Sanket. All rights reserved.</span>
+  <span className="hidden sm:inline">•</span>
+  <span>AnimalNet.ai</span>
+</div>
           </div>
         </footer>
       </div>
