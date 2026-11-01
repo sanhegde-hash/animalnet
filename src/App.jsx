@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 
-// Sleek geometric animal badge logo
+// Minimalist outline animal logo
 function AnimalLogo({ className = "w-5 h-5 text-white" }) {
   return (
     <svg
@@ -21,7 +21,7 @@ function AnimalLogo({ className = "w-5 h-5 text-white" }) {
   );
 }
 
-// Clean markdown parser for bolding and bullet points
+// Zero-dependency markdown parser for bolding, bullet lists, and paragraphs
 function FormattedMessage({ text }) {
   if (!text) return null;
 
@@ -138,7 +138,7 @@ const QUICK_CATEGORIES = [
 export default function App() {
   const [sessions, setSessions] = useState(() => {
     try {
-      const saved = sessionStorage.getItem("animalnet_v2_sessions");
+      const saved = sessionStorage.getItem("animalnet_v3_sessions");
       if (saved) return JSON.parse(saved);
     } catch (e) {
       console.error(e);
@@ -172,7 +172,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      sessionStorage.setItem("animalnet_v2_sessions", JSON.stringify(sessions));
+      sessionStorage.setItem("animalnet_v3_sessions", JSON.stringify(sessions));
     } catch (e) {
       console.error("Storage error:", e);
     }
@@ -242,7 +242,7 @@ export default function App() {
     );
 
     setIsLoading(true);
-    setStatusText("Fact-checking the web for animal evidence...");
+    setStatusText("Fact-checking the web & finding photos...");
 
     try {
       const currentHistory = activeSession.messages
@@ -269,6 +269,7 @@ export default function App() {
         role: "assistant",
         text: data.answer || "No response received.",
         sources: data.sources || [],
+        images: data.images || [],
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       };
 
@@ -284,6 +285,7 @@ export default function App() {
         role: "assistant",
         text: `⚠️ **Notice:** ${err.message}`,
         sources: [],
+        images: [],
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       };
       setSessions((prev) =>
@@ -308,7 +310,7 @@ export default function App() {
 
   return (
     <div className="flex h-[100dvh] w-screen bg-[#F8FAF9] text-slate-800 font-sans antialiased overflow-hidden relative">
-      {/* MOBILE BACKDROP */}
+      {/* MOBILE BACKDROP OVERLAY */}
       {sidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
@@ -431,7 +433,7 @@ export default function App() {
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-1.5 sm:p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              aria-label="Toggle history sidebar"
+              aria-label="Toggle sidebar"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h7" />
@@ -460,7 +462,6 @@ export default function App() {
           {activeSession.messages.length === 0 ? (
             /* BRAND NEW LANDING: COMPACT TOP HERO & 4 RELATABLE CARDS */
             <div className="py-2 sm:py-4 flex flex-col">
-              {/* COMPACT INTRO HEADER */}
               <div className="flex items-center gap-3 p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs mb-4">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shrink-0 shadow-sm">
                   <AnimalLogo className="w-5 h-5 text-white" />
@@ -475,7 +476,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* SECTION TITLE */}
               <div className="flex items-center justify-between mb-2.5 px-0.5">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                   Tap to Explore
@@ -483,7 +483,6 @@ export default function App() {
                 <span className="text-[11px] font-medium text-emerald-600">Quick inquiries</span>
               </div>
 
-              {/* 4 COMPACT INTERACTIVE CARDS */}
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 {QUICK_PROMPTS.map((item, pIdx) => (
                   <button
@@ -535,12 +534,41 @@ export default function App() {
                         : "bg-white text-slate-800 border border-slate-200 rounded-tl-xs shadow-xs"
                     }`}
                   >
+                    {/* PHOTO GALLERY CARDS (Visible only on assistant answers) */}
+                    {!isUser && msg.images && msg.images.length > 0 && (
+                      <div className="grid grid-cols-2 gap-2 mb-3">
+                        {msg.images.map((img, iIdx) => (
+                          <div
+                            key={iIdx}
+                            className="relative overflow-hidden rounded-xl bg-slate-100 border border-slate-200/90 aspect-video group"
+                          >
+                            <img
+                              src={img.url}
+                              alt={img.title}
+                              referrerPolicy="no-referrer"
+                              loading="lazy"
+                              onError={(e) => {
+                                e.currentTarget.parentElement.style.display = "none";
+                              }}
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-2 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                              <span className="text-[10px] text-white font-medium line-clamp-1">
+                                {img.title}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {isUser ? (
                       <div className="whitespace-pre-wrap">{msg.text}</div>
                     ) : (
                       <FormattedMessage text={msg.text} />
                     )}
 
+                    {/* SOURCE PILLS */}
                     {!isUser && msg.sources && msg.sources.length > 0 && (
                       <div className="mt-2.5 pt-2.5 border-t border-slate-100">
                         <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold text-emerald-800 uppercase tracking-wider mb-1">

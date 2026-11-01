@@ -33,7 +33,7 @@ def search_wildlife(query: str) -> list:
     results = []
     try:
         with DDGS() as ddgs:
-            raw = list(ddgs.text(f"{query} animal biology wildlife facts", max_results=3))
+            raw = list(ddgs.text(f"{query} animal wildlife facts", max_results=3))
             for item in raw:
                 results.append({
                     "title": item.get("title", "Web Source"),
@@ -42,6 +42,23 @@ def search_wildlife(query: str) -> list:
     except Exception:
         pass
     return results
+
+def search_animal_images(query: str) -> list:
+    """Fetch high-res animal photography from DuckDuckGo."""
+    images = []
+    try:
+        with DDGS() as ddgs:
+            raw = list(ddgs.images(f"{query} animal wildlife photography", max_results=2))
+            for item in raw:
+                img_url = item.get("image") or item.get("thumbnail")
+                if img_url:
+                    images.append({
+                        "url": img_url,
+                        "title": item.get("title", "Wildlife photograph")
+                    })
+    except Exception:
+        pass
+    return images
 
 @app.post("/api/chat")
 def handle_chat(req: ChatRequest):
@@ -52,29 +69,29 @@ def handle_chat(req: ChatRequest):
         )
 
     try:
-        # 1. Retrieve web context
+        # 1. Fetch text context & matching images simultaneously
         search_data = search_wildlife(req.query)
+        image_data = search_animal_images(req.query)
+
         context_text = "\n\n".join([f"[{i+1}] {item['body']}" for i, item in enumerate(search_data)])
 
         # 2. Scope guardrail
         system_instruction = (
-            "You are AnimalNet.ai, an expert zoologist and wildlife research AI. "
-            "SCOPE RESTRICTION: You may ONLY answer questions related to animals, marine life, insects, birds, ecosystems, and wildlife biology.\n"
-            "If the user asks about anything outside this domain (such as coding, human politics, math, business, cryptocurrencies, or general trivia), "
+            "You are AnimalNet.ai, an accessible wildlife research AI designed for the curious general public. "
+            "SCOPE RESTRICTION: You may ONLY answer questions related to animals, marine life, insects, birds, pets, ecosystems, and wildlife biology.\n"
+            "If the user asks about anything outside this domain (such as coding, math, human politics, crypto, or general trivia), "
             "do NOT answer their question. Instead, reply strictly with: "
-            "'I am AnimalNet.ai, specialized exclusively in the animal kingdom. Please ask me about wildlife species, habitats, anatomy, or animal behaviors!'\n"
-            "For valid animal questions, use the provided Web Context to deliver an accurate, concise, and structured explanation."
+            "'I am AnimalNet.ai, specialized exclusively in the animal kingdom. Please ask me about wildlife species, habits, pets, or animal behaviors!'\n"
+            "For valid animal questions, provide an engaging, clear, structured explanation using the provided Web Context."
         )
 
-        messages = [
-            {"role": "system", "content": system_instruction}
-        ]
+        messages = [{"role": "system", "content": system_instruction}]
 
-        # Add recent conversation turns
+        # Append recent history
         for msg in req.history[-3:]:
             messages.append({"role": msg.role, "content": msg.text})
 
-        # Inject current query along with web context
+        # Inject user query with context
         user_content = f"Web Context:\n{context_text}\n\nQuestion: {req.query}"
         messages.append({"role": "user", "content": user_content})
 
@@ -86,8 +103,8 @@ def handle_chat(req: ChatRequest):
         payload = {
             "model": MODEL_NAME,
             "messages": messages,
-            "max_tokens": 500,
-            "temperature": 0.2
+            "max_tokens": 550,
+            "temperature": 0.3
         }
 
         response = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=25)
@@ -102,9 +119,14 @@ def handle_chat(req: ChatRequest):
 
         answer = groq_data["choices"][0]["message"]["content"].strip()
 
+        # Suppress images if the guardrail rejected an off-topic query
+        if "I am AnimalNet.ai, specialized exclusively" in answer:
+            image_data = []
+
         return {
             "answer": answer,
-            "sources": [item["title"] for item in search_data if item.get("title")]
+            "sources": [item["title"] for item in search_data if item.get("title")],
+            "images": image_data
         }
 
     except Exception as e:
