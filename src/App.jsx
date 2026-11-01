@@ -227,6 +227,11 @@ export default function App() {
     const nowStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const userMessage = { role: "user", text: textToSend, timestamp: nowStr };
 
+    // Extract prior message history BEFORE updating state with the current query
+    const currentHistory = activeSession.messages
+      .slice(-4)
+      .map((m) => ({ role: m.role, text: m.text }));
+
     setSessions((prev) =>
       prev.map((s) => {
         if (s.id === activeSessionId) {
@@ -245,16 +250,12 @@ export default function App() {
     setStatusText("Fact-checking the web & finding photos...");
 
     try {
-      const currentHistory = activeSession.messages
-        .slice(-4)
-        .map((m) => ({ role: m.role, text: m.text }));
-
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: textToSend,
-          history: [...currentHistory, { role: "user", text: textToSend }]
+          history: currentHistory
         })
       });
 
@@ -534,7 +535,7 @@ export default function App() {
                         : "bg-white text-slate-800 border border-slate-200 rounded-tl-xs shadow-xs"
                     }`}
                   >
-                    {/* PHOTO GALLERY CARDS (Visible only on assistant answers) */}
+                    {/* PHOTO GALLERY CARDS */}
                     {!isUser && msg.images && msg.images.length > 0 && (
                       <div className="grid grid-cols-2 gap-2 mb-3">
                         {msg.images.map((img, iIdx) => (

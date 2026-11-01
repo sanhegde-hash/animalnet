@@ -69,29 +69,32 @@ def handle_chat(req: ChatRequest):
         )
 
     try:
-        # 1. Fetch text context & matching images simultaneously
+        # 1. Fetch text context & matching images
         search_data = search_wildlife(req.query)
         image_data = search_animal_images(req.query)
 
         context_text = "\n\n".join([f"[{i+1}] {item['body']}" for i, item in enumerate(search_data)])
+        if not context_text:
+            context_text = "No live web search snippet available. Rely on verified zoological facts."
 
-        # 2. Scope guardrail
+        # 2. Balanced guardrail: Generous to animal queries, strict only on completely unrelated fields
         system_instruction = (
-            "You are AnimalNet.ai, an accessible wildlife research AI designed for the curious general public. "
-            "SCOPE RESTRICTION: You may ONLY answer questions related to animals, marine life, insects, birds, pets, ecosystems, and wildlife biology.\n"
-            "If the user asks about anything outside this domain (such as coding, math, human politics, crypto, or general trivia), "
-            "do NOT answer their question. Instead, reply strictly with: "
-            "'I am AnimalNet.ai, specialized exclusively in the animal kingdom. Please ask me about wildlife species, habits, pets, or animal behaviors!'\n"
-            "For valid animal questions, provide an engaging, clear, structured explanation using the provided Web Context."
+            "You are AnimalNet.ai, a warm, engaging, and knowledgeable wildlife and animal guide.\n"
+            "DOMAIN GUIDELINE:\n"
+            "- Always answer questions about animals, pets, mammals, birds, reptiles, amphibians, fish, insects, marine creatures, paleontology/dinosaurs, and ecosystems.\n"
+            "- Even if the question is very short (e.g., 'What is lion', 'cat', 'elephant facts'), treat it as a valid animal question and give a clear, informative, and structured explanation.\n"
+            "- ONLY if the question is entirely unrelated to the living world (such as computer programming, cryptocurrencies, human stock markets, or calculus), decline by saying:\n"
+            "'I am AnimalNet.ai, specialized exclusively in the animal kingdom. Please ask me about wildlife species, habits, pets, or animal behaviors!'"
         )
 
         messages = [{"role": "system", "content": system_instruction}]
 
-        # Append recent history
-        for msg in req.history[-3:]:
-            messages.append({"role": msg.role, "content": msg.text})
+        # 3. Add ONLY past messages from history (ensuring proper alternation)
+        for msg in req.history:
+            if msg.text.strip():
+                messages.append({"role": msg.role, "content": msg.text})
 
-        # Inject user query with context
+        # 4. Inject current query ONCE with web context
         user_content = f"Web Context:\n{context_text}\n\nQuestion: {req.query}"
         messages.append({"role": "user", "content": user_content})
 
@@ -104,7 +107,7 @@ def handle_chat(req: ChatRequest):
             "model": MODEL_NAME,
             "messages": messages,
             "max_tokens": 550,
-            "temperature": 0.3
+            "temperature": 0.4
         }
 
         response = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=25)
@@ -119,7 +122,7 @@ def handle_chat(req: ChatRequest):
 
         answer = groq_data["choices"][0]["message"]["content"].strip()
 
-        # Suppress images if the guardrail rejected an off-topic query
+        # Suppress images if the query was genuinely off-topic
         if "I am AnimalNet.ai, specialized exclusively" in answer:
             image_data = []
 
