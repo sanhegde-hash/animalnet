@@ -16,9 +16,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-HF_TOKEN = os.environ.get("HF_TOKEN")
-HF_API_URL = "https://router.huggingface.co/hf-inference/v1/chat/completions"
-MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct"
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+# Groq supported models: qwen-2.5-32b or llama-3.3-70b-versatile
+MODEL_NAME = "qwen-2.5-32b"
 
 class ChatMessage(BaseModel):
     role: str
@@ -45,10 +46,10 @@ def search_wildlife(query: str) -> list:
 
 @app.post("/api/chat")
 def handle_chat(req: ChatRequest):
-    if not HF_TOKEN:
+    if not GROQ_API_KEY:
         raise HTTPException(
             status_code=500,
-            detail="HF_TOKEN environment variable is not configured."
+            detail="GROQ_API_KEY environment variable is not configured in Vercel."
         )
 
     try:
@@ -74,33 +75,33 @@ def handle_chat(req: ChatRequest):
         for msg in req.history[-3:]:
             messages.append({"role": msg.role, "content": msg.text})
 
-        # Inject user query along with web search context
+        # Inject query with search context
         user_content = f"Web Context:\n{context_text}\n\nQuestion: {req.query}"
         messages.append({"role": "user", "content": user_content})
 
         headers = {
-            "Authorization": f"Bearer {HF_TOKEN}",
+            "Authorization": f"Bearer {GROQ_API_KEY}",
             "Content-Type": "application/json"
         }
 
         payload = {
             "model": MODEL_NAME,
             "messages": messages,
-            "max_tokens": 400,
+            "max_tokens": 500,
             "temperature": 0.2
         }
 
-        response = requests.post(HF_API_URL, headers=headers, json=payload, timeout=30)
-        hf_data = response.json()
+        response = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=25)
+        groq_data = response.json()
 
         if response.status_code != 200:
-            error_detail = hf_data.get("error", str(hf_data))
+            error_detail = groq_data.get("error", {}).get("message", str(groq_data))
             raise HTTPException(
                 status_code=response.status_code,
-                detail=f"Hugging Face Error: {error_detail}"
+                detail=f"Groq API Error: {error_detail}"
             )
 
-        answer = hf_data["choices"][0]["message"]["content"].strip()
+        answer = groq_data["choices"][0]["message"]["content"].strip()
 
         return {
             "answer": answer,
