@@ -1,167 +1,417 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
-const STARTER_QUERIES = [
-  "Why do axolotls never undergo metamorphosis naturally?",
-  "How do deep-sea anglerfish find mates in the pitch black?",
-  "What is the venom mechanism of the blue-ringed octopus?",
-  "How fast can a peregrine falcon dive and survive the G-force?"
+const INITIAL_WELCOME = {
+  role: "assistant",
+  text: "Welcome to **AnimalNet.ai**. I am your autonomous wildlife intelligence agent powered by Qwen 3.8 27B. Ask any question spanning ethology, marine biology, evolutionary genetics, or wildlife habitats—I crawl live web research and synthesize verified answers.",
+  sources: []
+};
+
+const STARTER_PROMPTS = [
+  "How fast can a peregrine falcon dive and survive the G-force?",
+  "How do octopuses alter skin texture and color dynamically?",
+  "What allows tardigrades to survive the vacuum of space?",
+  "How do African elephants communicate through seismic waves?"
 ];
 
 export default function App() {
-  const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      text: "Welcome to **AnimalNet.ai**. Ask any question across ethology, marine biology, genetics, or wildlife habitats. I crawl live web research and synthesize direct answers.",
-      sources: []
+  const [sessions, setSessions] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("animalnet_sessions");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
     }
-  ]);
+    return [
+      {
+        id: "session-" + Date.now(),
+        title: "New Investigation",
+        messages: [INITIAL_WELCOME],
+        createdAt: Date.now()
+      }
+    ];
+  });
+
+  const [activeSessionId, setActiveSessionId] = useState(() => {
+    return sessions[0]?.id || "session-default";
+  });
+
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [statusText, setStatusText] = useState("");
-  const bottomRef = useRef(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const messagesEndRef = useRef(null);
 
+  // Sync sessions with sessionStorage
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, statusText]);
+    try {
+      sessionStorage.setItem("animalnet_sessions", JSON.stringify(sessions));
+    } catch (e) {
+      console.error("Storage error:", e);
+    }
+  }, [sessions]);
 
-  const sendQuery = async (queryText) => {
-    const textToSend = queryText || input;
-    if (!textToSend.trim() || loading) return;
+  // Scroll to bottom on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [sessions, activeSessionId, isLoading]);
 
-    const updatedHistory = [...messages, { role: "user", text: textToSend }];
-    setMessages(updatedHistory);
+  const activeSession =
+    sessions.find((s) => s.id === activeSessionId) || sessions[0];
+
+  const createNewSession = () => {
+    const newSession = {
+      id: "session-" + Date.now(),
+      title: "New Investigation",
+      messages: [INITIAL_WELCOME],
+      createdAt: Date.now()
+    };
+    setSessions((prev) => [newSession, ...prev]);
+    setActiveSessionId(newSession.id);
+  };
+
+  const deleteSession = (e, id) => {
+    e.stopPropagation();
+    if (sessions.length <= 1) {
+      createNewSession();
+      setSessions((prev) => prev.filter((s) => s.id !== id));
+      return;
+    }
+    const remaining = sessions.filter((s) => s.id !== id);
+    setSessions(remaining);
+    if (activeSessionId === id) {
+      setActiveSessionId(remaining[0].id);
+    }
+  };
+
+  const handleSend = async (queryOverride) => {
+    const textToSend = (queryOverride || input).trim();
+    if (!textToSend || isLoading) return;
+
     setInput("");
-    setLoading(true);
-    setStatusText("Scanning wildlife data & DuckDuckGo indexes...");
+    const userMessage = { role: "user", text: textToSend };
+
+    // Update session messages & auto-set conversation title
+    setSessions((prev) =>
+      prev.map((s) => {
+        if (s.id === activeSessionId) {
+          const isFirstQuery = s.messages.filter((m) => m.role === "user").length === 0;
+          return {
+            ...s,
+            title: isFirstQuery ? textToSend.slice(0, 32) + (textToSend.length > 32 ? "..." : "") : s.title,
+            messages: [...s.messages, userMessage]
+          };
+        }
+        return s;
+      })
+    );
+
+    setIsLoading(true);
+    setStatusText("Searching DuckDuckGo for live wildlife data...");
 
     try {
+      const currentHistory = activeSession.messages
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .slice(-4)
+        .map((m) => ({ role: m.role, text: m.text }));
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: textToSend,
-          history: updatedHistory.slice(-4).map((m) => ({ role: m.role, text: m.text }))
+          history: [...currentHistory, { role: "user", text: textToSend }]
         })
       });
 
-      setStatusText("Synthesizing answer with Qwen 2.5...");
+      setStatusText("Synthesizing zoological report with Qwen 3.8 27B...");
       const data = await res.json();
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          text: data.answer || "No response received.",
-          sources: data.sources || []
-        }
-      ]);
+      if (!res.ok) {
+        throw new Error(data.detail || `Server status ${res.status}`);
+      }
+
+      const botMessage = {
+        role: "assistant",
+        text: data.answer || "No response received from model.",
+        sources: data.sources || []
+      };
+
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === activeSessionId
+            ? { ...s, messages: [...s.messages, botMessage] }
+            : s
+        )
+      );
     } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          text: "Connection error: Unable to process the request right now.",
-          sources: []
-        }
-      ]);
+      const errorMessage = {
+        role: "assistant",
+        text: `⚠️ **Research Engine Notice:** ${err.message}`,
+        sources: []
+      };
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === activeSessionId
+            ? { ...s, messages: [...s.messages, errorMessage] }
+            : s
+        )
+      );
     } finally {
-      setLoading(false);
+      setIsLoading(false);
       setStatusText("");
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
   return (
-    <div className="flex flex-col h-screen bg-slate-950 text-slate-100 font-sans">
-      <header className="px-6 py-4 border-b border-slate-800 bg-slate-900/60 backdrop-blur flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">🌿</span>
-          <div>
-            <h1 className="text-lg font-bold tracking-tight text-emerald-400">AnimalNet<span className="text-white">.ai</span></h1>
-            <p className="text-xs text-slate-400">Search-Augmented Wildlife Intelligence</p>
-          </div>
-        </div>
-       <div className="flex items-center gap-2 text-xs text-slate-400">
-  <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-  Engine: Qwen 3.8 27B (Groq LPU)
-        </div>
-      </header>
-
-      <main className="flex-1 overflow-y-auto px-4 py-6 max-w-3xl w-full mx-auto space-y-5">
-        {messages.map((msg, index) => (
-          <div key={index} className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
-            <div
-              className={`rounded-2xl px-5 py-3.5 max-w-[85%] leading-relaxed text-sm ${
-                msg.role === "user"
-                  ? "bg-emerald-600 text-white rounded-br-none shadow-md shadow-emerald-900/20"
-                  : "bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none"
-              }`}
-            >
-              <div className="whitespace-pre-wrap">{msg.text}</div>
-
-              {msg.sources && msg.sources.length > 0 && (
-                <div className="mt-3 pt-2.5 border-t border-slate-800/80 text-xs text-slate-400">
-                  <span className="font-semibold text-slate-300">Live Web Sources:</span>
-                  <div className="flex flex-wrap gap-1.5 mt-1.5">
-                    {msg.sources.map((s, idx) => (
-                      <span key={idx} className="bg-slate-800 px-2 py-0.5 rounded text-[11px] text-slate-300 border border-slate-700">
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+    <div className="flex h-screen bg-[#F8FAFC] text-slate-800 font-sans antialiased overflow-hidden">
+      {/* LEFT SIDEBAR: SESSION HISTORY */}
+      <aside
+        className={`${
+          sidebarOpen ? "w-72" : "w-0"
+        } transition-all duration-300 ease-in-out flex flex-col bg-white border-r border-slate-200/80 shadow-sm relative z-20 overflow-hidden`}
+      >
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 text-lg">
+              🌿
+            </span>
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900 tracking-tight leading-none">
+                AnimalNet
+              </h2>
+              <span className="text-[11px] text-emerald-600 font-medium">Session History</span>
             </div>
           </div>
-        ))}
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="md:hidden text-slate-400 hover:text-slate-600 p-1"
+          >
+            ✕
+          </button>
+        </div>
 
-        {loading && (
-          <div className="flex items-center gap-2.5 text-xs text-emerald-400 italic bg-emerald-950/40 border border-emerald-800/40 px-3.5 py-2 rounded-xl w-fit">
-            <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        {/* NEW CHAT BUTTON */}
+        <div className="p-3">
+          <button
+            onClick={createNewSession}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-xl text-xs font-semibold shadow-sm shadow-emerald-600/20 transition-all"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
             </svg>
-            {statusText}
-          </div>
-        )}
-        <div ref={bottomRef} />
-      </main>
+            New Investigation
+          </button>
+        </div>
 
-      {messages.length === 1 && (
-        <div className="max-w-3xl w-full mx-auto px-4 pb-2">
-          <p className="text-xs text-slate-500 mb-2">Try asking:</p>
-          <div className="flex flex-wrap gap-2">
-            {STARTER_QUERIES.map((q, i) => (
-              <button
-                key={i}
-                onClick={() => sendQuery(q)}
-                className="text-xs bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 px-3 py-1.5 rounded-full transition"
+        {/* CHAT THREADS LIST */}
+        <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1">
+          <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-2 py-1">
+            Browser Sessions
+          </p>
+          {sessions.map((sess) => {
+            const isActive = sess.id === activeSessionId;
+            return (
+              <div
+                key={sess.id}
+                onClick={() => setActiveSessionId(sess.id)}
+                className={`group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer text-xs transition-all ${
+                  isActive
+                    ? "bg-emerald-50 text-emerald-900 font-semibold border border-emerald-200/60 shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100/80 font-normal"
+                }`}
               >
-                {q}
-              </button>
-            ))}
+                <div className="flex items-center gap-2 truncate">
+                  <span className={isActive ? "text-emerald-600" : "text-slate-400"}>💬</span>
+                  <span className="truncate">{sess.title}</span>
+                </div>
+                <button
+                  onClick={(e) => deleteSession(e, sess.id)}
+                  title="Delete chat"
+                  className="opacity-0 group-hover:opacity-100 hover:text-rose-500 text-slate-400 p-1 transition-opacity"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* SIDEBAR FOOTER */}
+        <div className="p-3 border-t border-slate-100 bg-slate-50/50">
+          <div className="flex items-center justify-between text-[11px] text-slate-500">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Groq LPU Active
+            </span>
+            <span className="text-slate-400 font-mono text-[10px]">v1.0 Pilot</span>
           </div>
         </div>
-      )}
+      </aside>
 
-      <footer className="p-4 border-t border-slate-800 bg-slate-900/70">
-        <form onSubmit={(e) => { e.preventDefault(); sendQuery(); }} className="max-w-3xl w-full mx-auto flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about any species, habitat, or wildlife behavior..."
-            disabled={loading}
-            className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition disabled:opacity-50"
-          />
-          <button
-            type="submit"
-            disabled={loading || !input.trim()}
-            className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-medium px-5 py-3 rounded-xl text-sm transition shadow-md shadow-emerald-900/30"
-          >
-            Ask
-          </button>
-        </form>
-      </footer>
+      {/* MAIN CHAT AREA */}
+      <div className="flex-1 flex flex-col h-screen min-w-0 bg-[#FAFAFA]">
+        {/* HEADER BAR */}
+        <header className="h-16 px-6 bg-white/80 backdrop-blur-md border-b border-slate-200/70 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
+              title="Toggle History Sidebar"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h7" />
+              </svg>
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-900 tracking-tight text-base">
+                AnimalNet<span className="text-emerald-600">.ai</span>
+              </span>
+              <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/50">
+                Zoology RAG
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="hidden sm:inline">Engine:</span>
+            <span className="font-semibold text-slate-700">Qwen 3.8 27B (Groq)</span>
+          </div>
+        </header>
+
+        {/* CHAT MESSAGES DISPLAY */}
+        <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-6 max-w-4xl w-full mx-auto">
+          {activeSession.messages.map((msg, idx) => {
+            const isUser = msg.role === "user";
+            return (
+              <div
+                key={idx}
+                className={`flex gap-3.5 ${isUser ? "justify-end" : "justify-start"}`}
+              >
+                {!isUser && (
+                  <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm text-sm">
+                    🦅
+                  </div>
+                )}
+
+                <div
+                  className={`max-w-[85%] md:max-w-[78%] rounded-2xl px-5 py-4 text-sm leading-relaxed ${
+                    isUser
+                      ? "bg-emerald-600 text-white rounded-tr-xs shadow-sm font-medium"
+                      : "bg-white text-slate-800 border border-slate-200/80 rounded-tl-xs shadow-xs"
+                  }`}
+                >
+                  <div className="whitespace-pre-wrap">{msg.text}</div>
+
+                  {/* CITATION PILLS */}
+                  {!isUser && msg.sources && msg.sources.length > 0 && (
+                    <div className="mt-4 pt-3 border-t border-slate-100">
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-800 uppercase tracking-wider mb-2">
+                        <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        Verified Sources
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {msg.sources.map((src, sIdx) => (
+                          <span
+                            key={sIdx}
+                            className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-50 text-slate-600 border border-slate-200 text-[11px] font-medium"
+                          >
+                            📄 {src}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {isUser && (
+                  <div className="w-8 h-8 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 text-sm font-bold">
+                    You
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* STARTER CARDS */}
+          {activeSession.messages.length === 1 && (
+            <div className="pt-4 pb-2">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                Suggested Wildlife Explorations
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                {STARTER_PROMPTS.map((prompt, pIdx) => (
+                  <button
+                    key={pIdx}
+                    onClick={() => handleSend(prompt)}
+                    className="p-3.5 text-left rounded-xl bg-white border border-slate-200/90 hover:border-emerald-500/50 hover:bg-emerald-50/30 text-slate-700 hover:text-emerald-900 text-xs leading-snug font-medium transition-all shadow-xs group flex items-start justify-between"
+                  >
+                    <span>{prompt}</span>
+                    <span className="text-slate-300 group-hover:text-emerald-600 transition-colors ml-2 font-bold">
+                      →
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* LOADING BADGE */}
+          {isLoading && (
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm animate-pulse">
+                🦅
+              </div>
+              <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white border border-slate-200/80 shadow-xs text-xs text-emerald-800 font-medium">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                {statusText || "Synthesizing answer..."}
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </main>
+
+        {/* INPUT PROMPT FOOTER */}
+        <footer className="p-4 md:p-6 bg-gradient-to-t from-white via-white to-transparent shrink-0">
+          <div className="max-w-4xl mx-auto">
+            <div className="relative flex items-center bg-white border border-slate-300/80 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-100 rounded-2xl shadow-sm transition-all p-1.5">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask about animal behavior, evolutionary adaptations, or taxonomy..."
+                rows={1}
+                className="w-full px-3 py-2 text-sm bg-transparent outline-none resize-none placeholder:text-slate-400 text-slate-800 max-h-32"
+              />
+              <button
+                onClick={() => handleSend()}
+                disabled={isLoading || !input.trim()}
+                className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white shrink-0 transition-all font-semibold active:scale-95 shadow-xs"
+                title="Send query"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </button>
+            </div>
+            <p className="text-center text-[11px] text-slate-400 mt-2">
+              AnimalNet verifies inquiries via DuckDuckGo and strictly bounds responses to the animal kingdom.
+            </p>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }

@@ -18,7 +18,6 @@ app.add_middleware(
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-# Groq supported models: qwen-2.5-32b or llama-3.3-70b-versatile
 MODEL_NAME = "qwen/qwen3.8-27b"
 
 class ChatMessage(BaseModel):
@@ -53,15 +52,15 @@ def handle_chat(req: ChatRequest):
         )
 
     try:
-        # 1. Fetch real-time web context
+        # 1. Retrieve web context
         search_data = search_wildlife(req.query)
         context_text = "\n\n".join([f"[{i+1}] {item['body']}" for i, item in enumerate(search_data)])
 
-        # 2. Strict system prompt guardrail
+        # 2. Scope guardrail
         system_instruction = (
             "You are AnimalNet.ai, an expert zoologist and wildlife research AI. "
             "SCOPE RESTRICTION: You may ONLY answer questions related to animals, marine life, insects, birds, ecosystems, and wildlife biology.\n"
-            "If the user asks about anything outside this domain (such as human politics, coding, cryptocurrency, math, celebrities, or general trivia), "
+            "If the user asks about anything outside this domain (such as coding, human politics, math, business, cryptocurrencies, or general trivia), "
             "do NOT answer their question. Instead, reply strictly with: "
             "'I am AnimalNet.ai, specialized exclusively in the animal kingdom. Please ask me about wildlife species, habitats, anatomy, or animal behaviors!'\n"
             "For valid animal questions, use the provided Web Context to deliver an accurate, concise, and structured explanation."
@@ -75,7 +74,7 @@ def handle_chat(req: ChatRequest):
         for msg in req.history[-3:]:
             messages.append({"role": msg.role, "content": msg.text})
 
-        # Inject query with search context
+        # Inject current query along with web context
         user_content = f"Web Context:\n{context_text}\n\nQuestion: {req.query}"
         messages.append({"role": "user", "content": user_content})
 
