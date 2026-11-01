@@ -1,35 +1,100 @@
 import React, { useState, useEffect, useRef } from "react";
 
-const INITIAL_WELCOME = {
-  role: "assistant",
-  text: "Welcome to **AnimalNet.ai**. I am your search-augmented zoological intelligence agent powered by **Qwen 3.8 27B** via Groq LPUs.\n\nAsk any question spanning ethology, marine biology, evolutionary adaptations, or taxonomy. Every query crawls live web research and synthesizes verified, citation-backed answers.",
-  sources: [],
-  timestamp: "Just now"
-};
+// Zero-dependency markdown formatter: converts **bold**, bullet points, and line breaks into clean JSX
+function FormattedMessage({ text }) {
+  if (!text) return null;
+
+  const lines = text.split("\n");
+  const formattedElements = [];
+  let currentList = [];
+
+  const parseInline = (line, lineKey) => {
+    // Regex splits on **bold text**
+    const parts = line.split(/(\*\*[^*]+?\*\*)/g);
+    return parts.map((part, pIdx) => {
+      if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
+        return (
+          <strong key={`${lineKey}-${pIdx}`} className="font-semibold text-slate-900">
+            {part.slice(2, -2)}
+          </strong>
+        );
+      }
+      return part;
+    });
+  };
+
+  lines.forEach((line, idx) => {
+    const trimmed = line.trim();
+
+    // Handle bullet points (* or -)
+    if (trimmed.startsWith("* ") || trimmed.startsWith("- ")) {
+      const content = trimmed.slice(2);
+      currentList.push(
+        <li key={`li-${idx}`} className="ml-4 list-disc text-slate-700 leading-relaxed my-0.5">
+          {parseInline(content, idx)}
+        </li>
+      );
+      return;
+    }
+
+    // Flush active list if we encounter regular text
+    if (currentList.length > 0) {
+      formattedElements.push(
+        <ul key={`ul-${idx}`} className="my-2 space-y-1">
+          {currentList}
+        </ul>
+      );
+      currentList = [];
+    }
+
+    // Empty line / paragraph break
+    if (!trimmed) {
+      formattedElements.push(<div key={`br-${idx}`} className="h-2" />);
+      return;
+    }
+
+    // Standard paragraph
+    formattedElements.push(
+      <p key={`p-${idx}`} className="leading-relaxed text-slate-700 my-1">
+        {parseInline(line, idx)}
+      </p>
+    );
+  });
+
+  if (currentList.length > 0) {
+    formattedElements.push(
+      <ul key="ul-end" className="my-2 space-y-1">
+        {currentList}
+      </ul>
+    );
+  }
+
+  return <div className="space-y-0.5">{formattedElements}</div>;
+}
 
 const STARTER_PROMPTS = [
   {
-    tag: "Aves / Biomechanics",
-    title: "Peregrine Falcon Dive Physics",
-    desc: "How fast can a peregrine falcon dive and survive 25G pullout forces?",
-    query: "How fast can a peregrine falcon dive and survive the extreme G-force?"
+    category: "Biomechanics",
+    title: "Peregrine Falcon Dive",
+    desc: "How does it survive 25G pullout forces at 300+ km/h?",
+    query: "How fast can a peregrine falcon dive and survive extreme G-force?"
   },
   {
-    tag: "Cephalopoda",
-    title: "Octopus Chromatophore Control",
-    desc: "How do octopuses alter skin texture and color dynamically in milliseconds?",
+    category: "Cephalopoda",
+    title: "Octopus Camouflage",
+    desc: "How do chromatophores change skin color and texture in milliseconds?",
     query: "How do octopuses alter skin texture and color dynamically?"
   },
   {
-    tag: "Extremophiles",
-    title: "Tardigrade Cryptobiosis",
-    desc: "What biological mechanisms allow water bears to survive the vacuum of space?",
-    query: "What allows tardigrades to survive the vacuum of space and radiation?"
+    category: "Extremophiles",
+    title: "Tardigrade Survival",
+    desc: "What cryptobiotic mechanics protect them in deep space?",
+    query: "What biological mechanisms allow tardigrades to survive the vacuum of space?"
   },
   {
-    tag: "Mammalia / Infrasound",
-    title: "Elephant Seismic Communication",
-    desc: "How do African savanna elephants detect low-frequency vibrations through foot pads?",
+    category: "Bio-Acoustics",
+    title: "Elephant Infrasound",
+    desc: "How do herds communicate seismic signals through foot pads?",
     query: "How do African elephants communicate through seismic waves in the ground?"
   }
 ];
@@ -53,7 +118,7 @@ export default function App() {
       {
         id: "sess-" + Date.now(),
         title: "New Investigation",
-        messages: [INITIAL_WELCOME],
+        messages: [], // Starts empty so the clean Hero state shows immediately
         createdAt: Date.now()
       }
     ];
@@ -86,7 +151,7 @@ export default function App() {
     }
   }, [sessions]);
 
-  // Auto-scroll on new messages
+  // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [sessions, activeSessionId, isLoading]);
@@ -104,7 +169,7 @@ export default function App() {
     const newSession = {
       id: "sess-" + Date.now(),
       title: "New Investigation",
-      messages: [INITIAL_WELCOME],
+      messages: [],
       createdAt: Date.now()
     };
     setSessions((prev) => [newSession, ...prev]);
@@ -136,14 +201,14 @@ export default function App() {
     const nowStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const userMessage = { role: "user", text: textToSend, timestamp: nowStr };
 
-    // Update messages and auto-title first thread
+    // Update messages and set title
     setSessions((prev) =>
       prev.map((s) => {
         if (s.id === activeSessionId) {
-          const isFirstQuery = s.messages.filter((m) => m.role === "user").length === 0;
+          const isFirstQuery = s.messages.length === 0;
           return {
             ...s,
-            title: isFirstQuery ? textToSend.slice(0, 24) + (textToSend.length > 24 ? "..." : "") : s.title,
+            title: isFirstQuery ? textToSend.slice(0, 26) + (textToSend.length > 26 ? "..." : "") : s.title,
             messages: [...s.messages, userMessage]
           };
         }
@@ -152,11 +217,10 @@ export default function App() {
     );
 
     setIsLoading(true);
-    setStatusText("Searching DuckDuckGo for live context...");
+    setStatusText("Searching DuckDuckGo for live zoological facts...");
 
     try {
       const currentHistory = activeSession.messages
-        .filter((m) => m.role === "user" || m.role === "assistant")
         .slice(-4)
         .map((m) => ({ role: m.role, text: m.text }));
 
@@ -169,7 +233,7 @@ export default function App() {
         })
       });
 
-      setStatusText("Synthesizing response with Qwen 3.8 27B...");
+      setStatusText("Synthesizing research dossier with Qwen 3.8 27B...");
       const data = await res.json();
 
       if (!res.ok) {
@@ -178,7 +242,7 @@ export default function App() {
 
       const botMessage = {
         role: "assistant",
-        text: data.answer || "No synthesis returned by engine.",
+        text: data.answer || "No response received.",
         sources: data.sources || [],
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       };
@@ -223,29 +287,25 @@ export default function App() {
       {sidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
-          className="md:hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-30 transition-opacity"
+          className="md:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-30 transition-opacity"
         />
       )}
 
-      {/* SIDEBAR: SAVED IN-BROWSER INVESTIGATIONS */}
+      {/* SIDEBAR */}
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-40 w-72 sm:w-80 bg-white border-r border-slate-200/80 shadow-xl md:shadow-none flex flex-col transition-transform duration-300 ease-in-out shrink-0 ${
+        className={`fixed md:static inset-y-0 left-0 z-40 w-72 sm:w-80 bg-white border-r border-slate-200 shadow-xl md:shadow-none flex flex-col transition-transform duration-300 ease-in-out shrink-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full md:hidden"
         }`}
       >
-        {/* BRAND HEADER */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 flex items-center justify-center text-white shadow-sm text-base">
+            <div className="w-8 h-8 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-sm text-base">
               🌿
             </div>
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-slate-900 tracking-tight text-sm">
                   AnimalNet<span className="text-emerald-600">.ai</span>
-                </span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/50">
-                  RAG
                 </span>
               </div>
               <span className="text-[11px] text-slate-400">Wildlife Intelligence</span>
@@ -260,7 +320,6 @@ export default function App() {
           </button>
         </div>
 
-        {/* NEW INVESTIGATION ACTION */}
         <div className="p-3">
           <button
             onClick={createNewSession}
@@ -273,10 +332,9 @@ export default function App() {
           </button>
         </div>
 
-        {/* SAVED SESSIONS LIST */}
         <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1">
           <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-2 py-1">
-            Browser Sessions
+            Investigations
           </p>
           {sessions.map((sess) => {
             const isActive = sess.id === activeSessionId;
@@ -289,7 +347,7 @@ export default function App() {
                 }}
                 className={`group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer text-xs transition-all ${
                   isActive
-                    ? "bg-emerald-50 text-emerald-950 font-semibold border border-emerald-200/70 shadow-xs"
+                    ? "bg-emerald-50 text-emerald-950 font-semibold border border-emerald-200"
                     : "text-slate-600 hover:bg-slate-50 font-normal border border-transparent"
                 }`}
               >
@@ -311,7 +369,6 @@ export default function App() {
           })}
         </div>
 
-        {/* TAXONOMY EXPLORER */}
         <div className="p-3 border-t border-slate-100 bg-slate-50/60">
           <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">
             Taxonomy Shortcuts
@@ -321,7 +378,7 @@ export default function App() {
               <button
                 key={tIdx}
                 onClick={() => handleSend(tax.sample)}
-                className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-white border border-slate-200/80 hover:border-emerald-400 text-slate-700 hover:text-emerald-900 text-[11px] font-medium transition-all truncate text-left shadow-2xs"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-emerald-400 text-slate-700 hover:text-emerald-900 text-[11px] font-medium transition-all truncate text-left shadow-2xs"
               >
                 <span>{tax.icon}</span>
                 <span className="truncate">{tax.name}</span>
@@ -330,10 +387,9 @@ export default function App() {
           </div>
         </div>
 
-        {/* SIDEBAR FOOTER */}
         <div className="p-3 border-t border-slate-100 bg-white">
           <div className="flex items-center justify-between text-[11px] text-slate-500">
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 font-medium">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               Groq LPU Active
             </span>
@@ -342,11 +398,11 @@ export default function App() {
         </div>
       </aside>
 
-      {/* MAIN RESEARCH ARENA */}
+      {/* MAIN CONTENT */}
       <div className="flex-1 flex flex-col h-full min-w-0 bg-[#FAFAFA] relative">
-        {/* HEADER */}
-        <header className="h-14 sm:h-16 px-3 sm:px-6 bg-white/90 backdrop-blur-md border-b border-slate-200/70 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        {/* HEADER BAR */}
+        <header className="h-14 sm:h-16 px-4 sm:px-6 bg-white border-b border-slate-200/80 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-1.5 sm:p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
@@ -357,123 +413,141 @@ export default function App() {
               </svg>
             </button>
             <div className="min-w-0">
-              <h1 className="text-xs sm:text-sm font-semibold text-slate-800 leading-none truncate max-w-[160px] sm:max-w-md">
+              <h1 className="text-xs sm:text-sm font-semibold text-slate-900 leading-none truncate max-w-[170px] sm:max-w-md">
                 {activeSession.title}
               </h1>
               <span className="text-[10px] sm:text-[11px] text-emerald-600 font-medium">
-                Live RAG Agent
+                Live Zoological RAG
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-2 text-xs text-slate-500 font-medium shrink-0">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="hidden sm:inline px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/60 font-semibold text-[11px]">
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/60 font-semibold text-[11px]">
               Qwen 3.8 27B
             </span>
           </div>
         </header>
 
-        {/* MESSAGES VIEWPORT */}
-        <main className="flex-1 overflow-y-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 max-w-4xl w-full mx-auto">
-          {activeSession.messages.map((msg, idx) => {
-            const isUser = msg.role === "user";
-            return (
-              <div
-                key={idx}
-                className={`flex gap-2.5 sm:gap-3.5 ${isUser ? "justify-end" : "justify-start"}`}
-              >
-                {!isUser && (
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm text-xs sm:text-sm mt-0.5">
-                    🦅
-                  </div>
-                )}
+        {/* CHAT MESSAGES OR CLEAN HERO EMPTY STATE */}
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 py-5 space-y-5 max-w-4xl w-full mx-auto">
+          {/* EMPTY STATE: Hero section with clear call-to-action */}
+          {activeSession.messages.length === 0 ? (
+            <div className="py-6 sm:py-12 flex flex-col items-center text-center">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shadow-lg shadow-emerald-600/20 text-2xl sm:text-3xl mb-4">
+                🌿
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                Explore the Animal Kingdom
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500 mt-2 max-w-md leading-relaxed">
+                Autonomous zoological intelligence. Ask any question about wildlife behavior, biomechanics, genetics, or habitats.
+              </p>
 
+              {/* STARTER PROMPT CARDS */}
+              <div className="w-full mt-8 text-left">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">
+                  Explore Common Topics
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {STARTER_PROMPTS.map((item, pIdx) => (
+                    <button
+                      key={pIdx}
+                      onClick={() => handleSend(item.query)}
+                      className="p-4 rounded-xl bg-white border border-slate-200 hover:border-emerald-500 hover:shadow-md transition-all text-left flex flex-col justify-between group active:scale-[0.99]"
+                    >
+                      <div>
+                        <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded">
+                          {item.category}
+                        </span>
+                        <h3 className="text-sm font-bold text-slate-900 mt-2 mb-1 group-hover:text-emerald-700 transition-colors">
+                          {item.title}
+                        </h3>
+                        <p className="text-xs text-slate-500 leading-relaxed">
+                          {item.desc}
+                        </p>
+                      </div>
+                      <div className="mt-3 flex items-center justify-end text-xs text-emerald-600 font-semibold group-hover:translate-x-0.5 transition-transform">
+                        Explore →
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            // ACTIVE CHAT STREAM
+            activeSession.messages.map((msg, idx) => {
+              const isUser = msg.role === "user";
+              return (
                 <div
-                  className={`max-w-[88%] sm:max-w-[80%] rounded-2xl px-3.5 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm leading-relaxed ${
-                    isUser
-                      ? "bg-emerald-600 text-white rounded-tr-xs shadow-sm font-medium"
-                      : "bg-white text-slate-800 border border-slate-200/80 rounded-tl-xs shadow-xs"
-                  }`}
+                  key={idx}
+                  className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
                 >
-                  <div className="whitespace-pre-wrap">{msg.text}</div>
-
-                  {/* CITATION PILLS */}
-                  {!isUser && msg.sources && msg.sources.length > 0 && (
-                    <div className="mt-3 pt-2.5 border-t border-slate-100">
-                      <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold text-emerald-800 uppercase tracking-wider mb-1.5">
-                        <svg className="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                        </svg>
-                        Web Citations
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {msg.sources.map((src, sIdx) => (
-                          <span
-                            key={sIdx}
-                            className="inline-flex items-center px-2 py-0.5 rounded bg-slate-50 text-slate-600 border border-slate-200 text-[10px] sm:text-[11px] font-medium"
-                          >
-                            📄 {src}
-                          </span>
-                        ))}
-                      </div>
+                  {!isUser && (
+                    <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm text-sm mt-0.5">
+                      🦅
                     </div>
                   )}
 
-                  <div className={`text-[10px] mt-1.5 ${isUser ? "text-emerald-200 text-right" : "text-slate-400"}`}>
-                    {msg.timestamp || ""}
-                  </div>
-                </div>
-
-                {isUser && (
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 text-xs font-bold mt-0.5">
-                    You
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {/* RESEARCH STARTER PROMPT TILES */}
-          {activeSession.messages.length === 1 && (
-            <div className="pt-1 pb-2">
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2.5">
-                Suggested Zoology Explorations
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                {STARTER_PROMPTS.map((item, pIdx) => (
-                  <button
-                    key={pIdx}
-                    onClick={() => handleSend(item.query)}
-                    className="p-3 sm:p-4 text-left rounded-xl sm:rounded-2xl bg-white border border-slate-200/90 hover:border-emerald-500 hover:bg-emerald-50/20 text-slate-700 transition-all shadow-2xs group flex flex-col justify-between"
+                  <div
+                    className={`max-w-[88%] sm:max-w-[82%] rounded-2xl px-4 sm:px-5 py-3.5 sm:py-4 text-xs sm:text-sm leading-relaxed ${
+                      isUser
+                        ? "bg-emerald-600 text-white rounded-tr-xs shadow-sm font-medium"
+                        : "bg-white text-slate-800 border border-slate-200 rounded-tl-xs shadow-xs"
+                    }`}
                   >
-                    <div>
-                      <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
-                        {item.tag}
-                      </span>
-                      <h4 className="text-xs sm:text-xs font-bold text-slate-900 mt-0.5 mb-1 group-hover:text-emerald-800">
-                        {item.title}
-                      </h4>
-                      <p className="text-[11px] text-slate-500 leading-relaxed">
-                        {item.desc}
-                      </p>
+                    {isUser ? (
+                      <div className="whitespace-pre-wrap">{msg.text}</div>
+                    ) : (
+                      <FormattedMessage text={msg.text} />
+                    )}
+
+                    {/* SOURCE CITATIONS */}
+                    {!isUser && msg.sources && msg.sources.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-slate-100">
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-800 uppercase tracking-wider mb-1.5">
+                          <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                          </svg>
+                          Verified Sources
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {msg.sources.map((src, sIdx) => (
+                            <span
+                              key={sIdx}
+                              className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-50 text-slate-600 border border-slate-200 text-[10px] sm:text-[11px] font-medium"
+                            >
+                              📄 {src}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className={`text-[10px] mt-1.5 ${isUser ? "text-emerald-100 text-right" : "text-slate-400"}`}>
+                      {msg.timestamp || ""}
                     </div>
-                    <div className="mt-2.5 flex items-center justify-end text-[11px] text-emerald-600 font-semibold">
-                      Explore →
+                  </div>
+
+                  {isUser && (
+                    <div className="w-8 h-8 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 text-xs font-bold mt-0.5">
+                      You
                     </div>
-                  </button>
-                ))}
-              </div>
-            </div>
+                  )}
+                </div>
+              );
+            })
           )}
 
-          {/* TELEMETRY LOADING STATE */}
+          {/* TELEMETRY SPINNER */}
           {isLoading && (
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm animate-pulse text-xs sm:text-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm animate-pulse text-sm">
                 🦅
               </div>
-              <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-white border border-slate-200/80 shadow-xs text-xs text-emerald-800 font-medium">
+              <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-white border border-slate-200 shadow-xs text-xs text-emerald-800 font-medium">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
                 <span className="truncate max-w-[220px] sm:max-w-none">
                   {statusText || "Synthesizing answer..."}
@@ -485,17 +559,17 @@ export default function App() {
           <div ref={messagesEndRef} />
         </main>
 
-        {/* INPUT COMPOSER & FOOTER */}
-        <footer className="p-2.5 sm:p-4 md:p-6 bg-gradient-to-t from-white via-white to-transparent shrink-0">
+        {/* INPUT BAR & FOOTER */}
+        <footer className="p-3 sm:p-4 md:p-6 bg-gradient-to-t from-white via-white to-transparent shrink-0">
           <div className="max-w-4xl mx-auto">
-            <div className="relative flex items-center bg-white border border-slate-300/80 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-100 rounded-xl sm:rounded-2xl shadow-sm transition-all p-1 sm:p-1.5">
+            <div className="relative flex items-center bg-white border border-slate-300 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-100 rounded-xl sm:rounded-2xl shadow-sm transition-all p-1.5">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask about animal behavior, genetics, or habitats..."
                 rows={1}
-                className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-transparent outline-none resize-none placeholder:text-slate-400 text-slate-800 max-h-24 sm:max-h-32"
+                className="w-full px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-transparent outline-none resize-none placeholder:text-slate-400 text-slate-800 max-h-24 sm:max-h-32"
               />
               <button
                 onClick={() => handleSend()}
