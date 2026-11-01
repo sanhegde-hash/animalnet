@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 
-// Minimalist outline animal logo (Lion & Wolf geometric fusion)
+// Sleek geometric animal badge logo
 function AnimalLogo({ className = "w-5 h-5 text-white" }) {
   return (
     <svg
@@ -12,7 +12,6 @@ function AnimalLogo({ className = "w-5 h-5 text-white" }) {
       strokeLinejoin="round"
       className={className}
     >
-      {/* Sleek geometric animal face & ears outline */}
       <path d="M4 8.5L7 3.5L10 6.5H14L17 3.5L20 8.5L18.5 15L12 21L5.5 15L4 8.5Z" />
       <path d="M9 10.5L12 13.5L15 10.5" />
       <path d="M12 13.5V17" />
@@ -22,7 +21,7 @@ function AnimalLogo({ className = "w-5 h-5 text-white" }) {
   );
 }
 
-// Markdown Formatter: renders **bold** text, bullet points, and paragraphs cleanly
+// Clean markdown parser for bolding and bullet points
 function FormattedMessage({ text }) {
   if (!text) return null;
 
@@ -89,34 +88,43 @@ function FormattedMessage({ text }) {
   return <div className="space-y-0.5">{formattedElements}</div>;
 }
 
-const STARTER_PROMPTS = [
+// 4 Relatable, Clickable Starter Cards
+const QUICK_PROMPTS = [
   {
-    category: "Pet Psychology",
-    badgeColor: "bg-amber-50 text-amber-800 border-amber-200",
+    icon: "🐕",
+    tag: "Pets",
     title: "Do dogs dream about us?",
-    desc: "What goes on in their brains when their paws twitch while sleeping?",
-    query: "Do dogs dream about their human owners when they sleep and twitch?"
+    desc: "Why their paws twitch in sleep",
+    theme: "border-amber-200/90 bg-gradient-to-br from-amber-50/80 to-white hover:border-amber-400",
+    pill: "bg-amber-100/80 text-amber-800",
+    query: "Do dogs dream about their owners when they sleep and twitch?"
   },
   {
-    category: "Wild Intelligence",
-    badgeColor: "bg-blue-50 text-blue-800 border-blue-200",
-    title: "Crows remembering human faces",
-    desc: "Can crows really hold grudges against specific people for years?",
-    query: "How do crows recognize and remember specific human faces, and do they hold grudges?"
+    icon: "🦅",
+    tag: "Flight",
+    title: "Falcon 300+ km/h dive",
+    desc: "How they survive 25G pullout forces",
+    theme: "border-sky-200/90 bg-gradient-to-br from-sky-50/80 to-white hover:border-sky-400",
+    pill: "bg-sky-100/80 text-sky-800",
+    query: "How fast can a peregrine falcon dive and survive the extreme G-force?"
   },
   {
-    category: "Ocean Mysteries",
-    badgeColor: "bg-cyan-50 text-cyan-800 border-cyan-200",
-    title: "Electric eels & self-shocking",
-    desc: "How do they produce up to 860 volts without electrocuting themselves?",
-    query: "How do electric eels produce high voltage electricity without shocking themselves?"
+    icon: "🐙",
+    tag: "Ocean",
+    title: "Instant octopus camouflage",
+    desc: "Shifting skin color & texture in seconds",
+    theme: "border-teal-200/90 bg-gradient-to-br from-teal-50/80 to-white hover:border-teal-400",
+    pill: "bg-teal-100/80 text-teal-800",
+    query: "How do octopuses change color and texture so fast to match rocks?"
   },
   {
-    category: "Apex Predators",
-    badgeColor: "bg-rose-50 text-rose-800 border-rose-200",
-    title: "Orcas hunting Great Whites",
-    desc: "How do killer whales hunt great white sharks with surgical precision?",
-    query: "How do killer whales hunt great white sharks and why do they target the liver?"
+    icon: "⚡",
+    tag: "Weird",
+    title: "Electric eels don't self-shock",
+    desc: "Producing 800V safely",
+    theme: "border-emerald-200/90 bg-gradient-to-br from-emerald-50/80 to-white hover:border-emerald-400",
+    pill: "bg-emerald-100/80 text-emerald-800",
+    query: "How do electric eels produce up to 860 volts without electrocuting themselves?"
   }
 ];
 
@@ -130,7 +138,7 @@ const QUICK_CATEGORIES = [
 export default function App() {
   const [sessions, setSessions] = useState(() => {
     try {
-      const saved = sessionStorage.getItem("animalnet_sessions");
+      const saved = sessionStorage.getItem("animalnet_v2_sessions");
       if (saved) return JSON.parse(saved);
     } catch (e) {
       console.error(e);
@@ -164,7 +172,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      sessionStorage.setItem("animalnet_sessions", JSON.stringify(sessions));
+      sessionStorage.setItem("animalnet_v2_sessions", JSON.stringify(sessions));
     } catch (e) {
       console.error("Storage error:", e);
     }
@@ -225,7 +233,7 @@ export default function App() {
           const isFirstQuery = s.messages.length === 0;
           return {
             ...s,
-            title: isFirstQuery ? textToSend.slice(0, 26) + (textToSend.length > 26 ? "..." : "") : s.title,
+            title: isFirstQuery ? textToSend.slice(0, 24) + (textToSend.length > 24 ? "..." : "") : s.title,
             messages: [...s.messages, userMessage]
           };
         }
@@ -299,8 +307,8 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-[100dvh] w-screen bg-[#F4F7F6] text-slate-800 font-sans antialiased overflow-hidden relative">
-      {/* MOBILE BACKDROP OVERLAY */}
+    <div className="flex h-[100dvh] w-screen bg-[#F8FAF9] text-slate-800 font-sans antialiased overflow-hidden relative">
+      {/* MOBILE BACKDROP */}
       {sidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
@@ -314,19 +322,15 @@ export default function App() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full md:hidden"
         }`}
       >
-        {/* LOGO & APP TITLE */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 flex items-center justify-center shadow-sm shadow-emerald-700/20">
-              <AnimalLogo className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 flex items-center justify-center shadow-sm">
+              <AnimalLogo className="w-4 h-4 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-slate-900 tracking-tight text-sm">
                   AnimalNet<span className="text-emerald-600">.ai</span>
-                </span>
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100/70 text-emerald-800">
-                  AI
                 </span>
               </div>
               <span className="text-[11px] text-slate-400">Animal Knowledge Hub</span>
@@ -341,11 +345,10 @@ export default function App() {
           </button>
         </div>
 
-        {/* NEW QUESTION BUTTON */}
         <div className="p-3">
           <button
             onClick={createNewSession}
-            className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-[0.98] text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
+            className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M12 4v16m8-8H4" />
@@ -354,7 +357,6 @@ export default function App() {
           </button>
         </div>
 
-        {/* PAST QUESTIONS LIST */}
         <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1">
           <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-2 py-1">
             Recent Conversations
@@ -392,7 +394,6 @@ export default function App() {
           })}
         </div>
 
-        {/* RELATABLE ANIMAL CATEGORIES */}
         <div className="p-3 border-t border-slate-100 bg-slate-50/70">
           <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">
             Explore By World
@@ -411,7 +412,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* FOOTER BADGE */}
         <div className="p-3 border-t border-slate-100 bg-white">
           <div className="flex items-center justify-between text-[11px] text-slate-500">
             <span className="flex items-center gap-1.5 font-medium">
@@ -423,15 +423,15 @@ export default function App() {
         </div>
       </aside>
 
-      {/* MAIN CHAT CANVAS */}
-      <div className="flex-1 flex flex-col h-full min-w-0 bg-[#FAFAFA] relative">
-        {/* HEADER */}
-        <header className="h-14 sm:h-16 px-4 sm:px-6 bg-white/95 backdrop-blur-md border-b border-slate-200/80 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2.5 min-w-0">
+      {/* MAIN SCREEN */}
+      <div className="flex-1 flex flex-col h-full min-w-0 bg-[#F8FAF9] relative">
+        {/* HEADER BAR */}
+        <header className="h-14 sm:h-16 px-3.5 sm:px-6 bg-white/95 backdrop-blur-md border-b border-slate-200/80 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-1.5 sm:p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              aria-label="Toggle sidebar"
+              aria-label="Toggle history sidebar"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h7" />
@@ -449,62 +449,68 @@ export default function App() {
 
           <div className="flex items-center gap-2 text-xs text-slate-500 font-medium shrink-0">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold text-[11px]">
+            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold text-[11px]">
               Qwen 3.8 27B
             </span>
           </div>
         </header>
 
-        {/* CHAT MESSAGES OR FRIENDLY HERO LANDING */}
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 py-5 space-y-5 max-w-4xl w-full mx-auto">
+        {/* MAIN BODY: 4 DISCOVERY CARDS OR ACTIVE CHAT */}
+        <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 md:px-8 py-3.5 sm:py-5 space-y-4 max-w-3xl w-full mx-auto">
           {activeSession.messages.length === 0 ? (
-            /* WARM, FRIENDLY HERO STATE */
-            <div className="py-6 sm:py-12 flex flex-col items-center text-center">
-              {/* BRAND LOGO */}
-              <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700 flex items-center justify-center shadow-lg shadow-emerald-600/25 mb-4">
-                <AnimalLogo className="w-9 h-9 text-white" />
+            /* BRAND NEW LANDING: COMPACT TOP HERO & 4 RELATABLE CARDS */
+            <div className="py-2 sm:py-4 flex flex-col">
+              {/* COMPACT INTRO HEADER */}
+              <div className="flex items-center gap-3 p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shrink-0 shadow-sm">
+                  <AnimalLogo className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-sm sm:text-base font-bold text-slate-900 leading-tight">
+                    Ask Anything About Animals
+                  </h2>
+                  <p className="text-[11px] sm:text-xs text-slate-500 leading-normal">
+                    Search-backed answers for pet habits, wild creatures, and nature facts.
+                  </p>
+                </div>
               </div>
 
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                Curious About the Animal Kingdom?
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-2 max-w-lg leading-relaxed">
-                From pet behaviors to strange ocean creatures and wild predators—ask anything and get fact-checked, easy-to-understand answers.
-              </p>
+              {/* SECTION TITLE */}
+              <div className="flex items-center justify-between mb-2.5 px-0.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Tap to Explore
+                </span>
+                <span className="text-[11px] font-medium text-emerald-600">Quick inquiries</span>
+              </div>
 
-              {/* CURATED STARTER CARDS */}
-              <div className="w-full mt-8 text-left">
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    Popular Animal Curiosities
-                  </p>
-                  <span className="text-[11px] text-emerald-600 font-medium">Tap to ask</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {STARTER_PROMPTS.map((item, pIdx) => (
-                    <button
-                      key={pIdx}
-                      onClick={() => handleSend(item.query)}
-                      className="p-4 rounded-xl bg-white border border-slate-200 hover:border-emerald-500 hover:shadow-md transition-all text-left flex flex-col justify-between group active:scale-[0.99]"
-                    >
-                      <div>
-                        <span className={`text-[10px] font-bold uppercase tracking-wider border px-2 py-0.5 rounded-md ${item.badgeColor}`}>
-                          {item.category}
+              {/* 4 COMPACT INTERACTIVE CARDS */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                {QUICK_PROMPTS.map((item, pIdx) => (
+                  <button
+                    key={pIdx}
+                    onClick={() => handleSend(item.query)}
+                    className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all shadow-2xs active:scale-[0.98] ${item.theme}`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-base">{item.icon}</span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${item.pill}`}>
+                          {item.tag}
                         </span>
-                        <h3 className="text-sm font-bold text-slate-900 mt-2.5 mb-1 group-hover:text-emerald-700 transition-colors">
-                          {item.title}
-                        </h3>
-                        <p className="text-xs text-slate-500 leading-relaxed">
-                          {item.desc}
-                        </p>
                       </div>
-                      <div className="mt-3.5 flex items-center justify-end text-xs text-emerald-600 font-semibold group-hover:translate-x-0.5 transition-transform">
-                        Explore →
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                      <h3 className="text-xs font-bold text-slate-900 leading-snug">
+                        {item.title}
+                      </h3>
+                      <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-tight">
+                        {item.desc}
+                      </p>
+                    </div>
+
+                    <div className="mt-2.5 flex items-center justify-end text-[11px] font-semibold text-emerald-700">
+                      Ask →
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
           ) : (
@@ -514,16 +520,16 @@ export default function App() {
               return (
                 <div
                   key={idx}
-                  className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
+                  className={`flex gap-2.5 sm:gap-3 ${isUser ? "justify-end" : "justify-start"}`}
                 >
                   {!isUser && (
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
-                      <AnimalLogo className="w-4 h-4 text-white" />
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                      <AnimalLogo className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
                     </div>
                   )}
 
                   <div
-                    className={`max-w-[88%] sm:max-w-[82%] rounded-2xl px-4 sm:px-5 py-3.5 sm:py-4 text-xs sm:text-sm leading-relaxed ${
+                    className={`max-w-[88%] sm:max-w-[82%] rounded-2xl px-3.5 sm:px-5 py-3 sm:py-3.5 text-xs sm:text-sm leading-relaxed ${
                       isUser
                         ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-tr-xs shadow-sm font-medium"
                         : "bg-white text-slate-800 border border-slate-200 rounded-tl-xs shadow-xs"
@@ -535,20 +541,19 @@ export default function App() {
                       <FormattedMessage text={msg.text} />
                     )}
 
-                    {/* SOURCE CITATIONS */}
                     {!isUser && msg.sources && msg.sources.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-slate-100">
-                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-800 uppercase tracking-wider mb-1.5">
-                          <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="mt-2.5 pt-2.5 border-t border-slate-100">
+                        <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold text-emerald-800 uppercase tracking-wider mb-1">
+                          <svg className="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                           </svg>
                           Verified Sources
                         </div>
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-1">
                           {msg.sources.map((src, sIdx) => (
                             <span
                               key={sIdx}
-                              className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-50 text-slate-600 border border-slate-200 text-[10px] sm:text-[11px] font-medium"
+                              className="inline-flex items-center px-2 py-0.5 rounded bg-slate-50 text-slate-600 border border-slate-200 text-[10px] sm:text-[11px] font-medium"
                             >
                               📄 {src}
                             </span>
@@ -563,7 +568,7 @@ export default function App() {
                   </div>
 
                   {isUser && (
-                    <div className="w-8 h-8 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 text-xs font-bold mt-0.5">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 text-xs font-bold mt-0.5">
                       You
                     </div>
                   )}
@@ -572,16 +577,15 @@ export default function App() {
             })
           )}
 
-          {/* TELEMETRY LOADING STATE */}
           {isLoading && (
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shrink-0 shadow-sm animate-pulse">
-                <AnimalLogo className="w-4 h-4 text-white" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shrink-0 shadow-sm animate-pulse">
+                <AnimalLogo className="w-3.5 h-3.5 text-white" />
               </div>
-              <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-white border border-slate-200 shadow-xs text-xs text-emerald-800 font-medium">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200 shadow-xs text-xs text-emerald-800 font-medium">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                <span className="truncate max-w-[220px] sm:max-w-none">
-                  {statusText || "Fact-checking animal research..."}
+                <span className="truncate max-w-[210px] sm:max-w-none">
+                  {statusText || "Fact-checking live research..."}
                 </span>
               </div>
             </div>
@@ -591,14 +595,14 @@ export default function App() {
         </main>
 
         {/* INPUT PROMPT BAR & FOOTER */}
-        <footer className="p-3 sm:p-4 md:p-6 bg-gradient-to-t from-white via-white to-transparent shrink-0">
-          <div className="max-w-4xl mx-auto">
-            <div className="relative flex items-center bg-white border border-slate-300 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-100 rounded-xl sm:rounded-2xl shadow-sm transition-all p-1.5">
+        <footer className="p-2.5 sm:p-4 bg-gradient-to-t from-white via-white to-transparent shrink-0">
+          <div className="max-w-3xl mx-auto">
+            <div className="relative flex items-center bg-white border border-slate-300 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-100 rounded-xl sm:rounded-2xl shadow-sm transition-all p-1 sm:p-1.5">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about pet habits, wild predators, sea life, or strange creatures..."
+                placeholder="Ask about dogs, cats, wild predators, or deep sea life..."
                 rows={1}
                 className="w-full px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-transparent outline-none resize-none placeholder:text-slate-400 text-slate-800 max-h-24 sm:max-h-32"
               />
@@ -614,10 +618,9 @@ export default function App() {
               </button>
             </div>
 
-            {/* COPYRIGHT FOOTER */}
-            <div className="mt-2 text-center text-[10px] sm:text-[11px] text-slate-400 flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2">
+            <div className="mt-2 text-center text-[10px] sm:text-[11px] text-slate-400 flex items-center justify-center gap-1.5">
               <span>© {new Date().getFullYear()} Sanketh. All rights reserved.</span>
-              <span className="hidden sm:inline">•</span>
+              <span>•</span>
               <span>AnimalNet.ai</span>
             </div>
           </div>
