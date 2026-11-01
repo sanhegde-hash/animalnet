@@ -19,7 +19,7 @@ app.add_middleware(
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 # Groq supported models: qwen-2.5-32b or llama-3.3-70b-versatile
-MODEL_NAME = "qwen-2.5-32b"
+MODEL_NAME = "qwen/qwen3.8-27b"
 
 class ChatMessage(BaseModel):
     role: str
