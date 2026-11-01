@@ -17,7 +17,8 @@ app.add_middleware(
 )
 
 HF_TOKEN = os.environ.get("HF_TOKEN")
-HF_API_URL = "https://router.huggingface.co/hf-inference/models/Qwen/Qwen2.5-1.5B-Instruct"
+HF_API_URL = "https://router.huggingface.co/hf-inference/v1/chat/completions"
+MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct"
 
 class ChatMessage(BaseModel):
     role: str
@@ -28,6 +29,7 @@ class ChatRequest(BaseModel):
     history: Optional[List[ChatMessage]] = []
 
 def search_wildlife(query: str) -> list:
+    """Fetch factual snippets from DuckDuckGo."""
     results = []
     try:
         with DDGS() as ddgs:
@@ -44,57 +46,61 @@ def search_wildlife(query: str) -> list:
 @app.post("/api/chat")
 def handle_chat(req: ChatRequest):
     if not HF_TOKEN:
-        raise HTTPException(status_code=500, detail="HF_TOKEN environment variable is not configured.")
+        raise HTTPException(
+            status_code=500,
+            detail="HF_TOKEN environment variable is not configured."
+        )
 
     try:
+        # 1. Fetch real-time web context
         search_data = search_wildlife(req.query)
         context_text = "\n\n".join([f"[{i+1}] {item['body']}" for i, item in enumerate(search_data)])
 
+        # 2. Strict system prompt guardrail
         system_instruction = (
             "You are AnimalNet.ai, an expert zoologist and wildlife research AI. "
             "SCOPE RESTRICTION: You may ONLY answer questions related to animals, marine life, insects, birds, ecosystems, and wildlife biology.\n"
-            "If the user asks about ANYTHING outside this domain (such as coding, human politics, math, business, crypto, or general trivia), "
+            "If the user asks about anything outside this domain (such as human politics, coding, cryptocurrency, math, celebrities, or general trivia), "
             "do NOT answer their question. Instead, reply strictly with: "
             "'I am AnimalNet.ai, specialized exclusively in the animal kingdom. Please ask me about wildlife species, habitats, anatomy, or animal behaviors!'\n"
-            "For valid animal questions, use the provided Web Context to provide an accurate, concise, and structured explanation."
+            "For valid animal questions, use the provided Web Context to deliver an accurate, concise, and structured explanation."
         )
 
-        prompt = f"<|im_start|>system\n{system_instruction}<|im_end|>\n"
+        messages = [
+            {"role": "system", "content": system_instruction}
+        ]
 
+        # Add recent conversation turns
         for msg in req.history[-3:]:
-            role = "user" if msg.role == "user" else "assistant"
-            prompt += f"<|im_start|>{role}\n{msg.text}<|im_end|>\n"
+            messages.append({"role": msg.role, "content": msg.text})
 
-        prompt += (
-            f"<|im_start|>user\n"
-            f"Web Context:\n{context_text}\n\n"
-            f"Question: {req.query}<|im_end|>\n"
-            f"<|im_start|>assistant\n"
-        )
+        # Inject user query along with web search context
+        user_content = f"Web Context:\n{context_text}\n\nQuestion: {req.query}"
+        messages.append({"role": "user", "content": user_content})
 
-        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-        payload = {
-            "inputs": prompt,
-            "parameters": {
-                "max_new_tokens": 350,
-                "temperature": 0.2,
-                "return_full_text": False
-            }
+        headers = {
+            "Authorization": f"Bearer {HF_TOKEN}",
+            "Content-Type": "application/json"
         }
 
-        response = requests.post(HF_API_URL, headers=headers, json=payload, timeout=25)
+        payload = {
+            "model": MODEL_NAME,
+            "messages": messages,
+            "max_tokens": 400,
+            "temperature": 0.2
+        }
+
+        response = requests.post(HF_API_URL, headers=headers, json=payload, timeout=30)
         hf_data = response.json()
 
-        if isinstance(hf_data, dict) and "error" in hf_data:
-            if "loading" in hf_data.get("error", "").lower():
-                return {
-                    "answer": "The model is currently waking up on Hugging Face's serverless nodes (~20s). Please submit your question once more!",
-                    "sources": []
-                }
-            raise HTTPException(status_code=502, detail=hf_data["error"])
+        if response.status_code != 200:
+            error_detail = hf_data.get("error", str(hf_data))
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=f"Hugging Face Error: {error_detail}"
+            )
 
-        raw_output = hf_data[0].get("generated_text", "").strip()
-        answer = raw_output.replace("<|im_end|>", "").strip()
+        answer = hf_data["choices"][0]["message"]["content"].strip()
 
         return {
             "answer": answer,

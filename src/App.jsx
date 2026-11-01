@@ -81,8 +81,8 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-2 text-xs text-slate-400">
-          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          Engine: Qwen 2.5 1.5B (HF Serverless)
+  <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+  Engine: Qwen 2.5 7B (HF Serverless)
         </div>
       </header>
 
