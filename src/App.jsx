@@ -2,15 +2,43 @@ import React, { useState, useEffect, useRef } from "react";
 
 const INITIAL_WELCOME = {
   role: "assistant",
-  text: "Welcome to **AnimalNet.ai**. I am your autonomous wildlife intelligence agent powered by Qwen 3.8 27B. Ask any question spanning ethology, marine biology, evolutionary genetics, or wildlife habitats—I crawl live web research and synthesize verified answers.",
-  sources: []
+  text: "Welcome to **AnimalNet.ai**. I am your search-augmented zoological intelligence agent powered by **Qwen 3.8 27B** via Groq LPUs.\n\nAsk any question spanning ethology, marine biology, evolutionary adaptations, or taxonomy. Every query crawls live web research and synthesizes verified, citation-backed answers.",
+  sources: [],
+  timestamp: "Just now"
 };
 
 const STARTER_PROMPTS = [
-  "How fast can a peregrine falcon dive and survive the G-force?",
-  "How do octopuses alter skin texture and color dynamically?",
-  "What allows tardigrades to survive the vacuum of space?",
-  "How do African elephants communicate through seismic waves?"
+  {
+    tag: "Aves / Biomechanics",
+    title: "Peregrine Falcon Dive Physics",
+    desc: "How fast can a peregrine falcon dive and survive 25G pullout forces?",
+    query: "How fast can a peregrine falcon dive and survive the extreme G-force?"
+  },
+  {
+    tag: "Cephalopoda",
+    title: "Octopus Chromatophore Control",
+    desc: "How do octopuses alter skin texture and color dynamically in milliseconds?",
+    query: "How do octopuses alter skin texture and color dynamically?"
+  },
+  {
+    tag: "Extremophiles",
+    title: "Tardigrade Cryptobiosis",
+    desc: "What biological mechanisms allow water bears to survive the vacuum of space?",
+    query: "What allows tardigrades to survive the vacuum of space and radiation?"
+  },
+  {
+    tag: "Mammalia / Infrasound",
+    title: "Elephant Seismic Communication",
+    desc: "How do African savanna elephants detect low-frequency vibrations through foot pads?",
+    query: "How do African elephants communicate through seismic waves in the ground?"
+  }
+];
+
+const TAXONOMY_SHORTCUTS = [
+  { name: "Mammalia", icon: "🐾", sample: "Unique adaptations of monotremes like the platypus" },
+  { name: "Aves", icon: "🪶", sample: "Aerodynamic wing morphology of wandering albatrosses" },
+  { name: "Cetacea & Marine", icon: "🐋", sample: "Echolocation anatomy in sperm whales" },
+  { name: "Invertebrata", icon: "🦂", sample: "Immune mechanics of horseshoe crab hemolymph" }
 ];
 
 export default function App() {
@@ -23,7 +51,7 @@ export default function App() {
     }
     return [
       {
-        id: "session-" + Date.now(),
+        id: "sess-" + Date.now(),
         title: "New Investigation",
         messages: [INITIAL_WELCOME],
         createdAt: Date.now()
@@ -32,7 +60,7 @@ export default function App() {
   });
 
   const [activeSessionId, setActiveSessionId] = useState(() => {
-    return sessions[0]?.id || "session-default";
+    return sessions[0]?.id || "sess-default";
   });
 
   const [input, setInput] = useState("");
@@ -41,7 +69,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const messagesEndRef = useRef(null);
 
-  // Sync sessions with sessionStorage
+  // Sync session state to sessionStorage
   useEffect(() => {
     try {
       sessionStorage.setItem("animalnet_sessions", JSON.stringify(sessions));
@@ -50,7 +78,7 @@ export default function App() {
     }
   }, [sessions]);
 
-  // Scroll to bottom on new messages
+  // Auto-scroll on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [sessions, activeSessionId, isLoading]);
@@ -60,7 +88,7 @@ export default function App() {
 
   const createNewSession = () => {
     const newSession = {
-      id: "session-" + Date.now(),
+      id: "sess-" + Date.now(),
       title: "New Investigation",
       messages: [INITIAL_WELCOME],
       createdAt: Date.now()
@@ -88,16 +116,17 @@ export default function App() {
     if (!textToSend || isLoading) return;
 
     setInput("");
-    const userMessage = { role: "user", text: textToSend };
+    const nowStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const userMessage = { role: "user", text: textToSend, timestamp: nowStr };
 
-    // Update session messages & auto-set conversation title
+    // Update messages and auto-title first thread
     setSessions((prev) =>
       prev.map((s) => {
         if (s.id === activeSessionId) {
           const isFirstQuery = s.messages.filter((m) => m.role === "user").length === 0;
           return {
             ...s,
-            title: isFirstQuery ? textToSend.slice(0, 32) + (textToSend.length > 32 ? "..." : "") : s.title,
+            title: isFirstQuery ? textToSend.slice(0, 28) + (textToSend.length > 28 ? "..." : "") : s.title,
             messages: [...s.messages, userMessage]
           };
         }
@@ -106,7 +135,7 @@ export default function App() {
     );
 
     setIsLoading(true);
-    setStatusText("Searching DuckDuckGo for live wildlife data...");
+    setStatusText("Crawling DuckDuckGo for peer-reviewed zoological context...");
 
     try {
       const currentHistory = activeSession.messages
@@ -123,7 +152,7 @@ export default function App() {
         })
       });
 
-      setStatusText("Synthesizing zoological report with Qwen 3.8 27B...");
+      setStatusText("Synthesizing answer with Qwen 3.8 27B on Groq LPU...");
       const data = await res.json();
 
       if (!res.ok) {
@@ -132,8 +161,9 @@ export default function App() {
 
       const botMessage = {
         role: "assistant",
-        text: data.answer || "No response received from model.",
-        sources: data.sources || []
+        text: data.answer || "No synthesis returned by engine.",
+        sources: data.sources || [],
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       };
 
       setSessions((prev) =>
@@ -146,8 +176,9 @@ export default function App() {
     } catch (err) {
       const errorMessage = {
         role: "assistant",
-        text: `⚠️ **Research Engine Notice:** ${err.message}`,
-        sources: []
+        text: `⚠️ **Zoological Engine Notice:** ${err.message}`,
+        sources: [],
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       };
       setSessions((prev) =>
         prev.map((s) =>
@@ -171,46 +202,52 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] text-slate-800 font-sans antialiased overflow-hidden">
-      {/* LEFT SIDEBAR: SESSION HISTORY */}
+      {/* SIDEBAR: SAVED IN-BROWSER INVESTIGATIONS */}
       <aside
         className={`${
-          sidebarOpen ? "w-72" : "w-0"
-        } transition-all duration-300 ease-in-out flex flex-col bg-white border-r border-slate-200/80 shadow-sm relative z-20 overflow-hidden`}
+          sidebarOpen ? "w-80" : "w-0"
+        } transition-all duration-300 ease-in-out flex flex-col bg-white border-r border-slate-200/80 shadow-sm relative z-20 overflow-hidden shrink-0`}
       >
+        {/* BRAND HEADER */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 text-lg">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 flex items-center justify-center text-white shadow-sm shadow-emerald-700/20 text-lg">
               🌿
-            </span>
+            </div>
             <div>
-              <h2 className="text-sm font-semibold text-slate-900 tracking-tight leading-none">
-                AnimalNet
-              </h2>
-              <span className="text-[11px] text-emerald-600 font-medium">Session History</span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-slate-900 tracking-tight text-sm">
+                  AnimalNet<span className="text-emerald-600">.ai</span>
+                </span>
+                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/50">
+                  RAG
+                </span>
+              </div>
+              <span className="text-[11px] text-slate-400">Wildlife Intelligence</span>
             </div>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="md:hidden text-slate-400 hover:text-slate-600 p-1"
+            className="md:hidden p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
           >
             ✕
           </button>
         </div>
 
-        {/* NEW CHAT BUTTON */}
+        {/* NEW INVESTIGATION ACTION */}
         <div className="p-3">
           <button
             onClick={createNewSession}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-xl text-xs font-semibold shadow-sm shadow-emerald-600/20 transition-all"
+            className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-xl text-xs font-semibold shadow-sm shadow-emerald-600/20 transition-all"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M12 4v16m8-8H4" />
             </svg>
             New Investigation
           </button>
         </div>
 
-        {/* CHAT THREADS LIST */}
+        {/* SAVED SESSIONS LIST */}
         <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1">
           <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-2 py-1">
             Browser Sessions
@@ -223,18 +260,18 @@ export default function App() {
                 onClick={() => setActiveSessionId(sess.id)}
                 className={`group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer text-xs transition-all ${
                   isActive
-                    ? "bg-emerald-50 text-emerald-900 font-semibold border border-emerald-200/60 shadow-xs"
-                    : "text-slate-600 hover:bg-slate-100/80 font-normal"
+                    ? "bg-emerald-50 text-emerald-950 font-semibold border border-emerald-200/70 shadow-xs"
+                    : "text-slate-600 hover:bg-slate-50 font-normal border border-transparent"
                 }`}
               >
-                <div className="flex items-center gap-2 truncate">
+                <div className="flex items-center gap-2.5 truncate">
                   <span className={isActive ? "text-emerald-600" : "text-slate-400"}>💬</span>
                   <span className="truncate">{sess.title}</span>
                 </div>
                 <button
                   onClick={(e) => deleteSession(e, sess.id)}
-                  title="Delete chat"
-                  className="opacity-0 group-hover:opacity-100 hover:text-rose-500 text-slate-400 p-1 transition-opacity"
+                  title="Delete investigation"
+                  className="opacity-0 group-hover:opacity-100 hover:text-rose-600 text-slate-400 p-1 transition-opacity"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -245,50 +282,70 @@ export default function App() {
           })}
         </div>
 
-        {/* SIDEBAR FOOTER */}
-        <div className="p-3 border-t border-slate-100 bg-slate-50/50">
+        {/* TAXONOMY EXPLORER DRAWER */}
+        <div className="p-3 border-t border-slate-100 bg-slate-50/60">
+          <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">
+            Taxonomy Shortcuts
+          </p>
+          <div className="grid grid-cols-2 gap-1.5">
+            {TAXONOMY_SHORTCUTS.map((tax, tIdx) => (
+              <button
+                key={tIdx}
+                onClick={() => handleSend(tax.sample)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200/80 hover:border-emerald-400 text-slate-700 hover:text-emerald-900 text-[11px] font-medium transition-all truncate text-left shadow-2xs"
+              >
+                <span>{tax.icon}</span>
+                <span className="truncate">{tax.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* TELEMETRY FOOTER */}
+        <div className="p-3 border-t border-slate-100 bg-white">
           <div className="flex items-center justify-between text-[11px] text-slate-500">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               Groq LPU Active
             </span>
-            <span className="text-slate-400 font-mono text-[10px]">v1.0 Pilot</span>
+            <span className="text-slate-400 font-mono text-[10px]">Qwen 3.8 27B</span>
           </div>
         </div>
       </aside>
 
-      {/* MAIN CHAT AREA */}
+      {/* MAIN RESEARCH ARENA */}
       <div className="flex-1 flex flex-col h-screen min-w-0 bg-[#FAFAFA]">
-        {/* HEADER BAR */}
+        {/* HEADER */}
         <header className="h-16 px-6 bg-white/80 backdrop-blur-md border-b border-slate-200/70 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
-              title="Toggle History Sidebar"
+              className="p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              title="Toggle Sidebar"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h7" />
               </svg>
             </button>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-900 tracking-tight text-base">
-                AnimalNet<span className="text-emerald-600">.ai</span>
-              </span>
-              <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/50">
-                Zoology RAG
+            <div>
+              <h1 className="text-sm font-semibold text-slate-800 leading-none">
+                {activeSession.title}
+              </h1>
+              <span className="text-[11px] text-emerald-600 font-medium">
+                Live RAG Zoological Agent
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span className="hidden sm:inline">Engine:</span>
-            <span className="font-semibold text-slate-700">Qwen 3.8 27B (Groq)</span>
+            <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/60 font-semibold text-[11px]">
+              Qwen 3.8 27B (Groq)
+            </span>
           </div>
         </header>
 
-        {/* CHAT MESSAGES DISPLAY */}
+        {/* MESSAGES VIEWPORT */}
         <main className="flex-1 overflow-y-auto px-4 md:px-8 py-6 space-y-6 max-w-4xl w-full mx-auto">
           {activeSession.messages.map((msg, idx) => {
             const isUser = msg.role === "user";
@@ -319,7 +376,7 @@ export default function App() {
                         <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                         </svg>
-                        Verified Sources
+                        Web Citations
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {msg.sources.map((src, sIdx) => (
@@ -333,10 +390,14 @@ export default function App() {
                       </div>
                     </div>
                   )}
+
+                  <div className={`text-[10px] mt-2 ${isUser ? "text-emerald-200 text-right" : "text-slate-400"}`}>
+                    {msg.timestamp || ""}
+                  </div>
                 </div>
 
                 {isUser && (
-                  <div className="w-8 h-8 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 text-sm font-bold">
+                  <div className="w-8 h-8 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 text-xs font-bold">
                     You
                   </div>
                 )}
@@ -344,36 +405,46 @@ export default function App() {
             );
           })}
 
-          {/* STARTER CARDS */}
+          {/* RESEARCH STARTER PROMPT TILES (Shown on initial thread) */}
           {activeSession.messages.length === 1 && (
-            <div className="pt-4 pb-2">
+            <div className="pt-2 pb-2">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-                Suggested Wildlife Explorations
+                Suggested Zoology Explorations
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                {STARTER_PROMPTS.map((prompt, pIdx) => (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {STARTER_PROMPTS.map((item, pIdx) => (
                   <button
                     key={pIdx}
-                    onClick={() => handleSend(prompt)}
-                    className="p-3.5 text-left rounded-xl bg-white border border-slate-200/90 hover:border-emerald-500/50 hover:bg-emerald-50/30 text-slate-700 hover:text-emerald-900 text-xs leading-snug font-medium transition-all shadow-xs group flex items-start justify-between"
+                    onClick={() => handleSend(item.query)}
+                    className="p-4 text-left rounded-2xl bg-white border border-slate-200/90 hover:border-emerald-500 hover:bg-emerald-50/20 text-slate-700 transition-all shadow-2xs group flex flex-col justify-between"
                   >
-                    <span>{prompt}</span>
-                    <span className="text-slate-300 group-hover:text-emerald-600 transition-colors ml-2 font-bold">
-                      →
-                    </span>
+                    <div>
+                      <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+                        {item.tag}
+                      </span>
+                      <h4 className="text-xs font-bold text-slate-900 mt-1 mb-1 group-hover:text-emerald-800">
+                        {item.title}
+                      </h4>
+                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                        {item.desc}
+                      </p>
+                    </div>
+                    <div className="mt-3 flex items-center justify-end text-xs text-emerald-600 font-semibold">
+                      Explore →
+                    </div>
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* LOADING BADGE */}
+          {/* MULTI-STAGE TELEMETRY SPINNER */}
           {isLoading && (
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm animate-pulse">
                 🦅
               </div>
-              <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white border border-slate-200/80 shadow-xs text-xs text-emerald-800 font-medium">
+              <div className="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-white border border-slate-200/80 shadow-xs text-xs text-emerald-800 font-medium">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
                 {statusText || "Synthesizing answer..."}
               </div>
@@ -383,7 +454,7 @@ export default function App() {
           <div ref={messagesEndRef} />
         </main>
 
-        {/* INPUT PROMPT FOOTER */}
+        {/* INPUT COMPOSER */}
         <footer className="p-4 md:p-6 bg-gradient-to-t from-white via-white to-transparent shrink-0">
           <div className="max-w-4xl mx-auto">
             <div className="relative flex items-center bg-white border border-slate-300/80 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-100 rounded-2xl shadow-sm transition-all p-1.5">
@@ -391,7 +462,7 @@ export default function App() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about animal behavior, evolutionary adaptations, or taxonomy..."
+                placeholder="Ask about animal behavior, biomechanics, evolutionary genetics, or habitats..."
                 rows={1}
                 className="w-full px-3 py-2 text-sm bg-transparent outline-none resize-none placeholder:text-slate-400 text-slate-800 max-h-32"
               />
@@ -402,12 +473,12 @@ export default function App() {
                 title="Send query"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
               </button>
             </div>
             <p className="text-center text-[11px] text-slate-400 mt-2">
-              AnimalNet verifies inquiries via DuckDuckGo and strictly bounds responses to the animal kingdom.
+              AnimalNet autonomously crawls the live web and enforces strict zoological domain guardrails.
             </p>
           </div>
         </footer>
