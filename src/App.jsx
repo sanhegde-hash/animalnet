@@ -1,6 +1,28 @@
 import React, { useState, useEffect, useRef } from "react";
 
-// Zero-dependency markdown formatter: converts **bold**, bullet points, and line breaks into clean JSX
+// Minimalist outline animal logo (Lion & Wolf geometric fusion)
+function AnimalLogo({ className = "w-5 h-5 text-white" }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      {/* Sleek geometric animal face & ears outline */}
+      <path d="M4 8.5L7 3.5L10 6.5H14L17 3.5L20 8.5L18.5 15L12 21L5.5 15L4 8.5Z" />
+      <path d="M9 10.5L12 13.5L15 10.5" />
+      <path d="M12 13.5V17" />
+      <circle cx="8.5" cy="10" r="0.75" fill="currentColor" />
+      <circle cx="15.5" cy="10" r="0.75" fill="currentColor" />
+    </svg>
+  );
+}
+
+// Markdown Formatter: renders **bold** text, bullet points, and paragraphs cleanly
 function FormattedMessage({ text }) {
   if (!text) return null;
 
@@ -9,7 +31,6 @@ function FormattedMessage({ text }) {
   let currentList = [];
 
   const parseInline = (line, lineKey) => {
-    // Regex splits on **bold text**
     const parts = line.split(/(\*\*[^*]+?\*\*)/g);
     return parts.map((part, pIdx) => {
       if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
@@ -26,7 +47,6 @@ function FormattedMessage({ text }) {
   lines.forEach((line, idx) => {
     const trimmed = line.trim();
 
-    // Handle bullet points (* or -)
     if (trimmed.startsWith("* ") || trimmed.startsWith("- ")) {
       const content = trimmed.slice(2);
       currentList.push(
@@ -37,7 +57,6 @@ function FormattedMessage({ text }) {
       return;
     }
 
-    // Flush active list if we encounter regular text
     if (currentList.length > 0) {
       formattedElements.push(
         <ul key={`ul-${idx}`} className="my-2 space-y-1">
@@ -47,13 +66,11 @@ function FormattedMessage({ text }) {
       currentList = [];
     }
 
-    // Empty line / paragraph break
     if (!trimmed) {
       formattedElements.push(<div key={`br-${idx}`} className="h-2" />);
       return;
     }
 
-    // Standard paragraph
     formattedElements.push(
       <p key={`p-${idx}`} className="leading-relaxed text-slate-700 my-1">
         {parseInline(line, idx)}
@@ -74,36 +91,40 @@ function FormattedMessage({ text }) {
 
 const STARTER_PROMPTS = [
   {
-    category: "Biomechanics",
-    title: "Peregrine Falcon Dive",
-    desc: "How does it survive 25G pullout forces at 300+ km/h?",
-    query: "How fast can a peregrine falcon dive and survive extreme G-force?"
+    category: "Pet Psychology",
+    badgeColor: "bg-amber-50 text-amber-800 border-amber-200",
+    title: "Do dogs dream about us?",
+    desc: "What goes on in their brains when their paws twitch while sleeping?",
+    query: "Do dogs dream about their human owners when they sleep and twitch?"
   },
   {
-    category: "Cephalopoda",
-    title: "Octopus Camouflage",
-    desc: "How do chromatophores change skin color and texture in milliseconds?",
-    query: "How do octopuses alter skin texture and color dynamically?"
+    category: "Wild Intelligence",
+    badgeColor: "bg-blue-50 text-blue-800 border-blue-200",
+    title: "Crows remembering human faces",
+    desc: "Can crows really hold grudges against specific people for years?",
+    query: "How do crows recognize and remember specific human faces, and do they hold grudges?"
   },
   {
-    category: "Extremophiles",
-    title: "Tardigrade Survival",
-    desc: "What cryptobiotic mechanics protect them in deep space?",
-    query: "What biological mechanisms allow tardigrades to survive the vacuum of space?"
+    category: "Ocean Mysteries",
+    badgeColor: "bg-cyan-50 text-cyan-800 border-cyan-200",
+    title: "Electric eels & self-shocking",
+    desc: "How do they produce up to 860 volts without electrocuting themselves?",
+    query: "How do electric eels produce high voltage electricity without shocking themselves?"
   },
   {
-    category: "Bio-Acoustics",
-    title: "Elephant Infrasound",
-    desc: "How do herds communicate seismic signals through foot pads?",
-    query: "How do African elephants communicate through seismic waves in the ground?"
+    category: "Apex Predators",
+    badgeColor: "bg-rose-50 text-rose-800 border-rose-200",
+    title: "Orcas hunting Great Whites",
+    desc: "How do killer whales hunt great white sharks with surgical precision?",
+    query: "How do killer whales hunt great white sharks and why do they target the liver?"
   }
 ];
 
-const TAXONOMY_SHORTCUTS = [
-  { name: "Mammalia", icon: "🐾", sample: "Unique adaptations of monotremes like the platypus" },
-  { name: "Aves", icon: "🪶", sample: "Aerodynamic wing morphology of wandering albatrosses" },
-  { name: "Marine Life", icon: "🐋", sample: "Echolocation anatomy in sperm whales" },
-  { name: "Invertebrata", icon: "🦂", sample: "Immune mechanics of horseshoe crab hemolymph" }
+const QUICK_CATEGORIES = [
+  { name: "Pets & Companions", icon: "🐕", sample: "Why do cats purr, and is it always because they're happy?" },
+  { name: "Wild Predators", icon: "🦁", sample: "How do lions coordinate ambushes when hunting in complete darkness?" },
+  { name: "Ocean Mysteries", icon: "🐬", sample: "Do dolphins call each other by distinct signature whistle names?" },
+  { name: "Weird & Wonders", icon: "🦎", sample: "Why can chameleons move their eyes in two different directions at once?" }
 ];
 
 export default function App() {
@@ -117,8 +138,8 @@ export default function App() {
     return [
       {
         id: "sess-" + Date.now(),
-        title: "New Investigation",
-        messages: [], // Starts empty so the clean Hero state shows immediately
+        title: "New Curiosity",
+        messages: [],
         createdAt: Date.now()
       }
     ];
@@ -131,8 +152,7 @@ export default function App() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [statusText, setStatusText] = useState("");
-  
-  // Default sidebar closed on mobile screens (< 768px)
+
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window !== "undefined") {
       return window.innerWidth >= 768;
@@ -142,7 +162,6 @@ export default function App() {
 
   const messagesEndRef = useRef(null);
 
-  // Sync session state to sessionStorage
   useEffect(() => {
     try {
       sessionStorage.setItem("animalnet_sessions", JSON.stringify(sessions));
@@ -151,7 +170,6 @@ export default function App() {
     }
   }, [sessions]);
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [sessions, activeSessionId, isLoading]);
@@ -168,7 +186,7 @@ export default function App() {
   const createNewSession = () => {
     const newSession = {
       id: "sess-" + Date.now(),
-      title: "New Investigation",
+      title: "New Curiosity",
       messages: [],
       createdAt: Date.now()
     };
@@ -201,7 +219,6 @@ export default function App() {
     const nowStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const userMessage = { role: "user", text: textToSend, timestamp: nowStr };
 
-    // Update messages and set title
     setSessions((prev) =>
       prev.map((s) => {
         if (s.id === activeSessionId) {
@@ -217,7 +234,7 @@ export default function App() {
     );
 
     setIsLoading(true);
-    setStatusText("Searching DuckDuckGo for live zoological facts...");
+    setStatusText("Fact-checking the web for animal evidence...");
 
     try {
       const currentHistory = activeSession.messages
@@ -233,7 +250,7 @@ export default function App() {
         })
       });
 
-      setStatusText("Synthesizing research dossier with Qwen 3.8 27B...");
+      setStatusText("Synthesizing answer with Qwen 3.8 27B...");
       const data = await res.json();
 
       if (!res.ok) {
@@ -282,7 +299,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-[100dvh] w-screen bg-[#F8FAFC] text-slate-800 font-sans antialiased overflow-hidden relative">
+    <div className="flex h-[100dvh] w-screen bg-[#F4F7F6] text-slate-800 font-sans antialiased overflow-hidden relative">
       {/* MOBILE BACKDROP OVERLAY */}
       {sidebarOpen && (
         <div
@@ -297,18 +314,22 @@ export default function App() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full md:hidden"
         }`}
       >
+        {/* LOGO & APP TITLE */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-sm text-base">
-              🌿
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 flex items-center justify-center shadow-sm shadow-emerald-700/20">
+              <AnimalLogo className="w-5 h-5 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-slate-900 tracking-tight text-sm">
                   AnimalNet<span className="text-emerald-600">.ai</span>
                 </span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100/70 text-emerald-800">
+                  AI
+                </span>
               </div>
-              <span className="text-[11px] text-slate-400">Wildlife Intelligence</span>
+              <span className="text-[11px] text-slate-400">Animal Knowledge Hub</span>
             </div>
           </div>
           <button
@@ -320,21 +341,23 @@ export default function App() {
           </button>
         </div>
 
+        {/* NEW QUESTION BUTTON */}
         <div className="p-3">
           <button
             onClick={createNewSession}
-            className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
+            className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-[0.98] text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M12 4v16m8-8H4" />
             </svg>
-            New Investigation
+            Ask New Question
           </button>
         </div>
 
+        {/* PAST QUESTIONS LIST */}
         <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1">
           <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-2 py-1">
-            Investigations
+            Recent Conversations
           </p>
           {sessions.map((sess) => {
             const isActive = sess.id === activeSessionId;
@@ -352,12 +375,12 @@ export default function App() {
                 }`}
               >
                 <div className="flex items-center gap-2.5 truncate">
-                  <span className={isActive ? "text-emerald-600" : "text-slate-400"}>💬</span>
+                  <span className={isActive ? "text-emerald-600" : "text-slate-400"}>🐾</span>
                   <span className="truncate">{sess.title}</span>
                 </div>
                 <button
                   onClick={(e) => deleteSession(e, sess.id)}
-                  title="Delete investigation"
+                  title="Delete chat"
                   className="opacity-70 md:opacity-0 group-hover:opacity-100 hover:text-rose-600 text-slate-400 p-1 transition-opacity"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -369,24 +392,26 @@ export default function App() {
           })}
         </div>
 
-        <div className="p-3 border-t border-slate-100 bg-slate-50/60">
+        {/* RELATABLE ANIMAL CATEGORIES */}
+        <div className="p-3 border-t border-slate-100 bg-slate-50/70">
           <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">
-            Taxonomy Shortcuts
+            Explore By World
           </p>
           <div className="grid grid-cols-2 gap-1.5">
-            {TAXONOMY_SHORTCUTS.map((tax, tIdx) => (
+            {QUICK_CATEGORIES.map((cat, cIdx) => (
               <button
-                key={tIdx}
-                onClick={() => handleSend(tax.sample)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-emerald-400 text-slate-700 hover:text-emerald-900 text-[11px] font-medium transition-all truncate text-left shadow-2xs"
+                key={cIdx}
+                onClick={() => handleSend(cat.sample)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-emerald-500 text-slate-700 hover:text-emerald-900 text-[11px] font-medium transition-all truncate text-left shadow-2xs"
               >
-                <span>{tax.icon}</span>
-                <span className="truncate">{tax.name}</span>
+                <span>{cat.icon}</span>
+                <span className="truncate">{cat.name}</span>
               </button>
             ))}
           </div>
         </div>
 
+        {/* FOOTER BADGE */}
         <div className="p-3 border-t border-slate-100 bg-white">
           <div className="flex items-center justify-between text-[11px] text-slate-500">
             <span className="flex items-center gap-1.5 font-medium">
@@ -398,15 +423,15 @@ export default function App() {
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
+      {/* MAIN CHAT CANVAS */}
       <div className="flex-1 flex flex-col h-full min-w-0 bg-[#FAFAFA] relative">
-        {/* HEADER BAR */}
-        <header className="h-14 sm:h-16 px-4 sm:px-6 bg-white border-b border-slate-200/80 flex items-center justify-between shrink-0">
+        {/* HEADER */}
+        <header className="h-14 sm:h-16 px-4 sm:px-6 bg-white/95 backdrop-blur-md border-b border-slate-200/80 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-1.5 sm:p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              aria-label="Toggle history sidebar"
+              aria-label="Toggle sidebar"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h7" />
@@ -417,39 +442,45 @@ export default function App() {
                 {activeSession.title}
               </h1>
               <span className="text-[10px] sm:text-[11px] text-emerald-600 font-medium">
-                Live Zoological RAG
+                Instant Wildlife Answers
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-2 text-xs text-slate-500 font-medium shrink-0">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/60 font-semibold text-[11px]">
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold text-[11px]">
               Qwen 3.8 27B
             </span>
           </div>
         </header>
 
-        {/* CHAT MESSAGES OR CLEAN HERO EMPTY STATE */}
+        {/* CHAT MESSAGES OR FRIENDLY HERO LANDING */}
         <main className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 py-5 space-y-5 max-w-4xl w-full mx-auto">
-          {/* EMPTY STATE: Hero section with clear call-to-action */}
           {activeSession.messages.length === 0 ? (
+            /* WARM, FRIENDLY HERO STATE */
             <div className="py-6 sm:py-12 flex flex-col items-center text-center">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shadow-lg shadow-emerald-600/20 text-2xl sm:text-3xl mb-4">
-                🌿
+              {/* BRAND LOGO */}
+              <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700 flex items-center justify-center shadow-lg shadow-emerald-600/25 mb-4">
+                <AnimalLogo className="w-9 h-9 text-white" />
               </div>
-              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                Explore the Animal Kingdom
+
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                Curious About the Animal Kingdom?
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-2 max-w-md leading-relaxed">
-                Autonomous zoological intelligence. Ask any question about wildlife behavior, biomechanics, genetics, or habitats.
+              <p className="text-xs sm:text-sm text-slate-500 mt-2 max-w-lg leading-relaxed">
+                From pet behaviors to strange ocean creatures and wild predators—ask anything and get fact-checked, easy-to-understand answers.
               </p>
 
-              {/* STARTER PROMPT CARDS */}
+              {/* CURATED STARTER CARDS */}
               <div className="w-full mt-8 text-left">
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">
-                  Explore Common Topics
-                </p>
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    Popular Animal Curiosities
+                  </p>
+                  <span className="text-[11px] text-emerald-600 font-medium">Tap to ask</span>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {STARTER_PROMPTS.map((item, pIdx) => (
                     <button
@@ -458,17 +489,17 @@ export default function App() {
                       className="p-4 rounded-xl bg-white border border-slate-200 hover:border-emerald-500 hover:shadow-md transition-all text-left flex flex-col justify-between group active:scale-[0.99]"
                     >
                       <div>
-                        <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded">
+                        <span className={`text-[10px] font-bold uppercase tracking-wider border px-2 py-0.5 rounded-md ${item.badgeColor}`}>
                           {item.category}
                         </span>
-                        <h3 className="text-sm font-bold text-slate-900 mt-2 mb-1 group-hover:text-emerald-700 transition-colors">
+                        <h3 className="text-sm font-bold text-slate-900 mt-2.5 mb-1 group-hover:text-emerald-700 transition-colors">
                           {item.title}
                         </h3>
                         <p className="text-xs text-slate-500 leading-relaxed">
                           {item.desc}
                         </p>
                       </div>
-                      <div className="mt-3 flex items-center justify-end text-xs text-emerald-600 font-semibold group-hover:translate-x-0.5 transition-transform">
+                      <div className="mt-3.5 flex items-center justify-end text-xs text-emerald-600 font-semibold group-hover:translate-x-0.5 transition-transform">
                         Explore →
                       </div>
                     </button>
@@ -477,7 +508,7 @@ export default function App() {
               </div>
             </div>
           ) : (
-            // ACTIVE CHAT STREAM
+            /* ACTIVE CHAT FEED */
             activeSession.messages.map((msg, idx) => {
               const isUser = msg.role === "user";
               return (
@@ -486,15 +517,15 @@ export default function App() {
                   className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
                 >
                   {!isUser && (
-                    <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm text-sm mt-0.5">
-                      🦅
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                      <AnimalLogo className="w-4 h-4 text-white" />
                     </div>
                   )}
 
                   <div
                     className={`max-w-[88%] sm:max-w-[82%] rounded-2xl px-4 sm:px-5 py-3.5 sm:py-4 text-xs sm:text-sm leading-relaxed ${
                       isUser
-                        ? "bg-emerald-600 text-white rounded-tr-xs shadow-sm font-medium"
+                        ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-tr-xs shadow-sm font-medium"
                         : "bg-white text-slate-800 border border-slate-200 rounded-tl-xs shadow-xs"
                     }`}
                   >
@@ -541,16 +572,16 @@ export default function App() {
             })
           )}
 
-          {/* TELEMETRY SPINNER */}
+          {/* TELEMETRY LOADING STATE */}
           {isLoading && (
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm animate-pulse text-sm">
-                🦅
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shrink-0 shadow-sm animate-pulse">
+                <AnimalLogo className="w-4 h-4 text-white" />
               </div>
               <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-white border border-slate-200 shadow-xs text-xs text-emerald-800 font-medium">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
                 <span className="truncate max-w-[220px] sm:max-w-none">
-                  {statusText || "Synthesizing answer..."}
+                  {statusText || "Fact-checking animal research..."}
                 </span>
               </div>
             </div>
@@ -559,7 +590,7 @@ export default function App() {
           <div ref={messagesEndRef} />
         </main>
 
-        {/* INPUT BAR & FOOTER */}
+        {/* INPUT PROMPT BAR & FOOTER */}
         <footer className="p-3 sm:p-4 md:p-6 bg-gradient-to-t from-white via-white to-transparent shrink-0">
           <div className="max-w-4xl mx-auto">
             <div className="relative flex items-center bg-white border border-slate-300 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-100 rounded-xl sm:rounded-2xl shadow-sm transition-all p-1.5">
@@ -567,7 +598,7 @@ export default function App() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about animal behavior, genetics, or habitats..."
+                placeholder="Ask about pet habits, wild predators, sea life, or strange creatures..."
                 rows={1}
                 className="w-full px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-transparent outline-none resize-none placeholder:text-slate-400 text-slate-800 max-h-24 sm:max-h-32"
               />
@@ -575,7 +606,7 @@ export default function App() {
                 onClick={() => handleSend()}
                 disabled={isLoading || !input.trim()}
                 className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white shrink-0 transition-all font-semibold active:scale-95 shadow-xs"
-                title="Send query"
+                title="Send question"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
